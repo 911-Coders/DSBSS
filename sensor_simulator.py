@@ -1,7 +1,7 @@
 import csv
 import random
 import uuid
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 # Configuration
 NUM_RECORDS = 1000          
@@ -17,7 +17,7 @@ HEADERS = [
 def main():
     print(f"Generating {NUM_RECORDS} progressive telemetry records...")
     
-    start_time = datetime.utcnow() - timedelta(days=30)
+    start_time = datetime.now(timezone.utc) - timedelta(days=30)
     
     # State tracking for gradual degradation
     is_degrading = False
@@ -68,7 +68,7 @@ def main():
             # 3. Save the record
             data = {
                 'message_id': str(uuid.uuid4()),
-                'timestamp': start_time.isoformat() + "Z",
+                'timestamp': start_time.isoformat().replace('+00:00', 'Z'),
                 'asset_id': 'PM-42-EAST',
                 'motor_current_peak_amps': peak_amps,
                 'motor_current_avg_amps': avg_amps,
