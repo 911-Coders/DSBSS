@@ -2,7 +2,7 @@ import pandas as pd
 from sklearn.model_selection import train_test_split
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import classification_report, confusion_matrix
-
+import joblib
 # 1. Load the generated dataset
 DATA_FILE = 'point_machine_telemetry_trend.csv'
 print(f"Loading data from {DATA_FILE}...")
@@ -21,6 +21,8 @@ print(f"Training set size: {len(X_train)} | Testing set size: {len(X_test)}")
 print("Training the Random Forest model...")
 model = RandomForestClassifier(n_estimators=100, random_state=42, class_weight='balanced')
 model.fit(X_train, y_train)
+joblib.dump(model, 'rf_model.pkl')
+print("Model successfully saved!")
 
 # 5. Evaluate the Model on the Test Set
 print("\n--- Model Evaluation ---")
