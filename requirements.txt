@@ -1,0 +1,9 @@
+streamlit
+pandas
+plotly
+ortools
+fastapi
+uvicorn
+scikit-learn
+joblib
+pydantic
