@@ -7,3 +7,4 @@ uvicorn
 scikit-learn
 joblib
 pydantic
+matplotlib seaborn
