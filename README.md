@@ -37,7 +37,13 @@ The data processing, prediction, and routing engines were successfully validated
 
 *   **Corridor Size:** Successfully extracted and dynamically processed complex multi-track interactions from the core CSV dataset.
 *   **Predictive Accuracy:** The Random Forest IoT model achieved a 99% accuracy rate on the simulated test set, properly classifying early-stage mechanical friction.
+
+![Confusion Matrix](confusion_matrix.png)
+![Feature Importance](feature_importance.png)
+
 *   **Financial Validation:** When tested with a conceptual crisis query (e.g., "Line A Track Fracture"), the XAI engine successfully prioritized high-weight passenger trains onto fast bypass loops, while rerouting low-priority freight with clear mathematical justification.
+
+![Routing Financial Performance](financial_performance.png)
 
 ## Setup and Installation
 To reproduce this project in your own environment, follow these steps. 
