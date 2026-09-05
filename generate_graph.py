@@ -13,7 +13,7 @@ def plot_feature_importance():
     importances = model.feature_importances_
     
     plt.figure(figsize=(8, 5))
-    sns.barplot(x=importances, y=features, palette='viridis')
+    sns.barplot(x=importances, y=features, hue=features, legend=False, palette='viridis')
     plt.title('Predictive IoT Model: Feature Importance')
     plt.xlabel('Importance Weight')
     plt.tight_layout()
