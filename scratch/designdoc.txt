@@ -1,0 +1,59 @@
+Reference Style: Clean, soft-shadow, modern minimal. Core Vibe: "Organic Trust" – sophisticated and muted, not neon/cluttered.
+
+1. Visual Identity & Color Palette
+
+Canvas: #F7F6F6 (Soft Cloud) - Reduces eye strain.
+
+Primary: #4C5273 (Steel Indigo) - Buttons, headers.
+
+Text (Dark): #252837 (Gunmetal) - Headings, prices.
+
+Secondary: #686E8F (Slate Blue) - Subtitles.
+
+Accent: #A3584E (Terracotta) - Market price strikethroughs, discount badges.
+
+Border: #ACACBF (Muted Silver).
+
+2. Typography
+
+Font: Plus Jakarta Sans or Inter (Geometric sans-serif).
+
+Scale: H1 Headlines (24px Bold), Product Names (18px Semi-Bold), Price Tag (20px Bold).
+
+3. UI Component Library
+
+A. The "Price Comparison" Card
+
+White card on soft grey background.
+
+Layout: Top 60% Image, Bottom 40% Pricing.
+
+Price Block: Large dark price (e.g., ₹18) vs. Small terracotta strikethrough (e.g., ~~Market: ₹30~~).
+
+Action: Circular "Add" button floating on the image.
+
+B. "Flash Price" Widget
+
+Gradient background (#4C5273 to #252837).
+
+Vegetable image breaks container bounds (3D effect).
+
+Countdown timer pill in Terracotta.
+
+C. Cart & Navigation
+
+Nav: Bottom bar, no hamburger menus.
+
+Cart: Slide-up bottom sheet with blurred background. "Slide to Pay" interaction.
+
+4. Screen Layouts
+
+Home: Sticky header, horizontal "Flash Price" scroll, masonry grid for products.
+
+Product Detail: Half-screen image, "Harvested at [Time]" tag, Price comparison bar chart.
+
+5. Implementation Notes
+
+Use .svg icons and .webp images for speed.
+
+Use Flutter Hero widgets for smooth image transitions.
