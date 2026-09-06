@@ -3,30 +3,39 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Track Simulation</title>
+    <title>Track Simulation Pro</title>
     <style>
-        body, html { margin: 0; padding: 0; width: 100%; height: 100%; background-color: #121824; color: #e2e8f0; font-family: 'Inter', sans-serif; overflow: hidden; display: flex; flex-direction: column; user-select: none; }
-        #ui-bar { background-color: #1e293b; padding: 10px 15px; display: flex; gap: 15px; align-items: center; border-bottom: 1px solid #334155; z-index: 10; flex-wrap: wrap; }
-        .btn-group { display: flex; gap: 5px; background: #0f172a; padding: 4px; border-radius: 6px; border: 1px solid #334155; }
-        button { background-color: #334155; color: #f8fafc; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 13px; font-weight: 500; transition: background 0.2s; }
-        button:hover { background-color: #475569; }
-        button.active { background-color: #3b82f6; color: white; }
-        button.danger { background-color: #ef4444; }
-        button.danger:hover { background-color: #f87171; }
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
         
-        #canvas-container { flex-grow: 1; position: relative; cursor: grab; }
-        #canvas-container:active { cursor: grabbing; }
+        body, html { margin: 0; padding: 0; width: 100%; height: 100%; background-color: #0f172a; color: #e2e8f0; font-family: 'Inter', sans-serif; overflow: hidden; display: flex; flex-direction: column; user-select: none; }
+        
+        #ui-bar { background-color: #1e293b; padding: 12px 20px; display: flex; gap: 20px; align-items: center; border-bottom: 1px solid #334155; z-index: 10; flex-wrap: wrap; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.3); }
+        .btn-group { display: flex; gap: 4px; background: #0f172a; padding: 5px; border-radius: 8px; border: 1px solid #334155; align-items: center; }
+        
+        button { background-color: transparent; color: #94a3b8; border: none; padding: 8px 14px; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: 600; transition: all 0.2s; display: flex; align-items: center; gap: 6px; }
+        button:hover { background-color: #334155; color: #f8fafc; }
+        button.active { background-color: #3b82f6; color: white; box-shadow: 0 0 10px rgba(59,130,246,0.5); }
+        
+        button.danger { color: #f87171; }
+        button.danger:hover { background-color: #7f1d1d; color: white; }
+        button.danger.active { background-color: #ef4444; color: white; box-shadow: 0 0 10px rgba(239,68,68,0.5); }
+        
+        .separator { width: 1px; height: 28px; background: #334155; margin: 0 5px; }
+        
+        #canvas-container { flex-grow: 1; position: relative; cursor: grab; background: #0f172a; }
+        #canvas-container.panning { cursor: grabbing !important; }
         #canvas-container.tool-active { cursor: crosshair; }
         canvas { display: block; width: 100%; height: 100%; }
         
-        #info-panel { position: absolute; bottom: 20px; left: 20px; background: rgba(15, 23, 42, 0.85); backdrop-filter: blur(8px); border: 1px solid #334155; padding: 15px; border-radius: 8px; min-width: 250px; display: none; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.5); pointer-events: none; }
-        #info-panel h3 { margin: 0 0 10px 0; font-size: 16px; color: #f8fafc; }
-        #info-panel p { margin: 5px 0; font-size: 13px; color: #94a3b8; }
-        .highlight { color: #38bdf8; font-weight: bold; }
+        #info-panel { position: absolute; bottom: 25px; left: 25px; background: rgba(15, 23, 42, 0.9); backdrop-filter: blur(12px); border: 1px solid #334155; padding: 20px; border-radius: 12px; min-width: 280px; display: none; box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5); pointer-events: none; border-top: 4px solid #38bdf8; }
+        #info-panel h3 { margin: 0 0 12px 0; font-size: 18px; color: #f8fafc; display: flex; justify-content: space-between; align-items: center; }
+        #info-panel p { margin: 8px 0; font-size: 14px; color: #cbd5e1; display: flex; justify-content: space-between; }
+        .highlight { color: #38bdf8; font-weight: 600; }
+        .status-badge { padding: 3px 8px; border-radius: 4px; font-size: 12px; font-weight: 700; text-transform: uppercase; }
+        .status-moving { background: rgba(34, 197, 94, 0.2); color: #4ade80; border: 1px solid rgba(34, 197, 94, 0.3); }
+        .status-stopped { background: rgba(239, 68, 68, 0.2); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.3); }
         
-        #disruption-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 5; display: none; }
-        .weather-rain { background: linear-gradient(to bottom, rgba(255,255,255,0) 0%, rgba(200,220,255,0.15) 100%); animation: rain 0.3s linear infinite; }
-        @keyframes rain { 0% { transform: translateY(-100%); } 100% { transform: translateY(100%); } }
+        #toast { position: absolute; top: 20px; left: 50%; transform: translateX(-50%); background: rgba(59, 130, 246, 0.9); color: white; padding: 10px 20px; border-radius: 30px; font-weight: 600; font-size: 14px; opacity: 0; transition: opacity 0.3s; pointer-events: none; z-index: 100; box-shadow: 0 4px 12px rgba(0,0,0,0.3); }
     </style>
 </head>
 <body>
@@ -42,94 +51,139 @@
             <button class="speed-btn" data-speed="5">5x</button>
             <button class="speed-btn" data-speed="10">10x</button>
         </div>
-        <div style="width: 1px; height: 24px; background: #334155; margin: 0 5px;"></div>
+        <div class="separator"></div>
         <div class="btn-group">
             <button id="tool-select" class="tool-btn active" data-tool="select">👆 Select</button>
             <button id="tool-track" class="tool-btn" data-tool="track">🛤️ Track</button>
+            <button id="tool-train" class="tool-btn" data-tool="train">🚆 Train</button>
             <button id="tool-station" class="tool-btn" data-tool="station">🏢 Station</button>
             <button id="tool-signal" class="tool-btn" data-tool="signal">🚦 Signal</button>
             <button id="tool-delete" class="tool-btn" data-tool="delete">🗑️ Delete</button>
         </div>
-        <div style="width: 1px; height: 24px; background: #334155; margin: 0 5px;"></div>
+        <div class="separator"></div>
         <div class="btn-group">
             <button id="disrupt-weather" class="danger">🌧️ Weather</button>
-            <button id="disrupt-rail" class="danger" data-tool="break_rail">⚠️ Broken Rail</button>
-            <button id="disrupt-clear" style="background:#0f172a; border: 1px solid #334155;">✨ Clear All</button>
+            <button id="disrupt-rail" class="danger tool-btn" data-tool="break_rail">⚠️ Break Rail</button>
+            <button id="btn-clear-faults" style="color: #94a3b8;">✨ Repair All</button>
         </div>
     </div>
 
     <div id="canvas-container">
-        <div id="disruption-overlay"></div>
         <canvas id="sim-canvas"></canvas>
+        <div id="toast">Message</div>
         <div id="info-panel">
-            <h3 id="info-title">Title</h3>
-            <p id="info-l1">Line 1</p>
-            <p id="info-l2">Line 2</p>
-            <p id="info-l3">Line 3</p>
+            <h3 id="info-title"><span>Title</span> <span id="info-badge" class="status-badge status-moving">MOVING</span></h3>
+            <div style="height: 1px; background: #334155; margin: 10px 0;"></div>
+            <p><span>Train Type</span> <span id="info-type" class="highlight">Type</span></p>
+            <p><span>Current Speed</span> <span id="info-speed" style="color: white; font-variant-numeric: tabular-nums;">0 km/h</span></p>
+            <p><span>Next Signal</span> <span id="info-signal" style="font-weight: bold;">--</span></p>
         </div>
     </div>
 
     <script>
         const CONFIG = {
-            gridSize: 30,
+            gridSize: 40,
             simSpeed: 1,
             isPaused: false,
             colors: {
-                bgDark: '#121212', bgLight: '#1e1e1e',
-                track: '#64748b', trackGlow: '#0ea5e9', tie: '#334155',
+                bgDark: '#0f172a', bgLight: '#1e293b',
+                track: '#94a3b8', trackGlow: '#38bdf8', tie: '#334155',
                 trainPre: '#ef4444', trainExp: '#f59e0b', trainFrt: '#3b82f6',
-                sigG: '#22c55e', sigY: '#eab308', sigR: '#ef4444', sigOff: '#475569'
+                sigG: '#22c55e', sigY: '#eab308', sigR: '#ef4444', sigOff: '#64748b'
             }
         };
 
         const state = {
-            camera: { x: 0, y: 0, zoom: 1.5 },
+            camera: { x: 0, y: 0, zoom: 1 },
             tool: 'select',
             hoveredGrid: { x: 0, y: 0 },
             dragStart: null,
             selectedTrain: null,
-            selectedEdge: null,
             weather: false,
-            brokenEdges: new Set(),
-            stations: [],
-            signals: [],
-            trains: [],
+            particles: [],
             nodes: new Map(),
-            edges: new Map()
+            edges: new Map(),
+            stations: [],
+            signals: [], // { id, edgeId, pos, dir (1 or -1) }
+            trains: [],
+            blocks: [], // Dynamically calculated track blocks for collision avoidance
         };
 
-        // --- CORE MATH & GRAPH ---
+        const canvas = document.getElementById('sim-canvas');
+        const ctx = canvas.getContext('2d');
+        const toastEl = document.getElementById('toast');
+        
+        function showToast(msg) {
+            toastEl.innerText = msg;
+            toastEl.style.opacity = 1;
+            setTimeout(() => toastEl.style.opacity = 0, 2000);
+        }
+
+        // --- RESIZE & MATH LOGIC ---
+        function resize() {
+            canvas.width = canvas.parentElement.clientWidth;
+            canvas.height = canvas.parentElement.clientHeight;
+        }
+        window.addEventListener('resize', resize); resize();
+
+        function getMousePos(evt) {
+            const rect = canvas.getBoundingClientRect();
+            return { x: evt.clientX - rect.left, y: evt.clientY - rect.top };
+        }
+        
+        function screenToWorld(x, y) {
+            return {
+                x: (x - state.camera.x) / state.camera.zoom,
+                y: (y - state.camera.y) / state.camera.zoom
+            };
+        }
+        
+        function worldToGrid(x, y) {
+            return { x: Math.round(x / CONFIG.gridSize), y: Math.round(y / CONFIG.gridSize) };
+        }
+
+        // --- GRAPH ENGINE ---
         function getId(x, y) { return `${x},${y}`; }
+        
         function addNode(x, y) {
             let id = getId(x, y);
             if (!state.nodes.has(id)) state.nodes.set(id, { id, x, y, edges: [] });
             return id;
         }
+        
         function addEdge(n1_id, n2_id) {
             if(n1_id === n2_id) return null;
             let id = `${n1_id}_${n2_id}`;
             let idRev = `${n2_id}_${n1_id}`;
-            if (state.edges.has(id) || state.edges.has(idRev)) return;
+            if (state.edges.has(id) || state.edges.has(idRev)) return null;
             
             let n1 = state.nodes.get(n1_id);
             let n2 = state.nodes.get(n2_id);
             let length = Math.sqrt(Math.pow(n2.x - n1.x, 2) + Math.pow(n2.y - n1.y, 2));
             
-            let edge = { id, n1: n1_id, n2: n2_id, length, signals: [], broken: false };
+            let edge = { id, n1: n1_id, n2: n2_id, length, broken: false };
             state.edges.set(id, edge);
             n1.edges.push(id);
             n2.edges.push(id);
+            
+            recalculateBlocks();
             return edge;
         }
+        
         function removeEdge(id) {
             if(!state.edges.has(id)) return;
             let edge = state.edges.get(id);
             state.nodes.get(edge.n1).edges = state.nodes.get(edge.n1).edges.filter(e => e !== id);
             state.nodes.get(edge.n2).edges = state.nodes.get(edge.n2).edges.filter(e => e !== id);
             state.signals = state.signals.filter(s => s.edgeId !== id);
-            state.brokenEdges.delete(id);
+            
+            // Remove trains on this edge
+            state.trains = state.trains.filter(t => t.path[t.pathIdx] !== id);
+            
             state.edges.delete(id);
+            recalculateBlocks();
         }
+
         function distToSegment(p, v, w) {
             let l2 = Math.pow(w.x - v.x, 2) + Math.pow(w.y - v.y, 2);
             if (l2 === 0) return Math.sqrt(Math.pow(p.x - v.x, 2) + Math.pow(p.y - v.y, 2));
@@ -137,197 +191,347 @@
             t = Math.max(0, Math.min(1, t));
             return Math.sqrt(Math.pow(p.x - (v.x + t * (w.x - v.x)), 2) + Math.pow(p.y - (v.y + t * (w.y - v.y)), 2));
         }
-        function getEdgeAt(gx, gy) {
+        
+        function getEdgeAt(worldX, worldY) {
+            const gx = worldX / CONFIG.gridSize;
+            const gy = worldY / CONFIG.gridSize;
+            let bestEdge = null;
+            let minDist = Infinity;
+            
             for (let [id, edge] of state.edges) {
                 let n1 = state.nodes.get(edge.n1);
                 let n2 = state.nodes.get(edge.n2);
-                if (distToSegment({x:gx, y:gy}, n1, n2) < 0.3) return edge;
+                let d = distToSegment({x:gx, y:gy}, n1, n2);
+                if (d < 0.4 && d < minDist) {
+                    minDist = d;
+                    bestEdge = edge;
+                }
             }
-            return null;
+            return bestEdge;
         }
 
-        // --- LOGIC ---
-        // Block is from one signal to the next.
-        // A train moves along its predefined path of edges.
-        class Train {
-            constructor(id, name, type, color, path, speedMax) {
-                this.id = id; this.name = name; this.type = type; this.color = color;
-                this.path = path; // array of edge IDs
-                this.pathIdx = 0;
-                this.progress = 0; // 0 to 1 on current edge
-                this.speedMax = speedMax;
-                this.speed = 0;
-                this.direction = 1; // 1 = n1->n2, -1 = n2->n1
-                this.updateDirection();
+        // --- FACTORIO BLOCK LOGIC ---
+        // A block is a collection of contiguous edges that are not separated by a signal.
+        // If a train occupies any edge in a block, the entire block is occupied.
+        function recalculateBlocks() {
+            state.blocks = [];
+            let visitedEdges = new Set();
+            
+            // Map signals by edge for fast lookup
+            let edgeSignals = new Map();
+            for(let s of state.signals) {
+                if(!edgeSignals.has(s.edgeId)) edgeSignals.set(s.edgeId, []);
+                edgeSignals.get(s.edgeId).push(s);
+            }
+
+            for (let [edgeId, edge] of state.edges) {
+                if (visitedEdges.has(edgeId)) continue;
                 
-                let startEdge = state.edges.get(this.path[0]);
-                let n = state.nodes.get(this.direction === 1 ? startEdge.n1 : startEdge.n2);
-                this.x = n.x; this.y = n.y;
+                let currentBlock = { id: state.blocks.length, edges: new Set(), occupiedBy: null };
+                
+                // BFS to find all connected edges without crossing a signal boundary
+                let queue = [edgeId];
+                while(queue.length > 0) {
+                    let currId = queue.shift();
+                    if(visitedEdges.has(currId)) continue;
+                    
+                    visitedEdges.add(currId);
+                    currentBlock.edges.add(currId);
+                    
+                    let cEdge = state.edges.get(currId);
+                    
+                    // If this edge itself has a signal, it acts as a boundary. 
+                    // Technically in factorio signals are AT nodes or ON edges. 
+                    // We placed them ON edges. So an edge with a signal is cut in half logically.
+                    // For simplicity, we say a signal on an edge protects the NEXT edge in the sequence.
+                    // Let's do node-based traversal. We can cross a node IF there is no signal pointing towards the next edge.
+                    
+                    for (let node of [state.nodes.get(cEdge.n1), state.nodes.get(cEdge.n2)]) {
+                        for (let nextEdgeId of node.edges) {
+                            if (nextEdgeId === currId) continue;
+                            if (visitedEdges.has(nextEdgeId)) continue;
+                            
+                            // Check if there is a signal on the current edge or next edge that separates them
+                            let hasSignal = false;
+                            if(edgeSignals.has(currId) || edgeSignals.has(nextEdgeId)) {
+                                // Simplified block boundary: any signal on the connected edges breaks the block.
+                                hasSignal = true;
+                            }
+                            
+                            if (!hasSignal) {
+                                queue.push(nextEdgeId);
+                            }
+                        }
+                    }
+                }
+                state.blocks.push(currentBlock);
+            }
+        }
+
+        function getBlockForEdge(edgeId) {
+            return state.blocks.find(b => b.edges.has(edgeId));
+        }
+
+        // --- PATHFINDING ---
+        // Simple random wander for spawned trains
+        function getNextEdge(train) {
+            let currEdge = state.edges.get(train.path[train.pathIdx]);
+            let forwardNodeId = train.direction === 1 ? currEdge.n2 : currEdge.n1;
+            let forwardNode = state.nodes.get(forwardNodeId);
+            
+            // Available next edges (excluding the one we just came from)
+            let choices = forwardNode.edges.filter(eid => eid !== currEdge.id);
+            
+            if (choices.length === 0) return null; // End of line
+            
+            // Prefer straight lines
+            let bestChoice = choices[0];
+            return bestChoice;
+        }
+
+        // --- TRAIN ENGINE ---
+        class Train {
+            constructor(id, name, type, color, startEdgeId, dir) {
+                this.id = id; this.name = name; this.type = type; this.color = color;
+                this.path = [startEdgeId];
+                this.pathIdx = 0;
+                this.progress = 0.1;
+                this.speedMax = type === 'Premium' ? 140 : type === 'Express' ? 100 : 60;
+                this.speed = 0;
+                this.direction = dir; // 1 or -1
+                
+                let e = state.edges.get(startEdgeId);
+                let n1 = state.nodes.get(e.n1);
+                let n2 = state.nodes.get(e.n2);
+                let startNode = dir === 1 ? n1 : n2;
+                let endNode = dir === 1 ? n2 : n1;
+                this.x = startNode.x + (endNode.x - startNode.x) * this.progress;
+                this.y = startNode.y + (endNode.y - startNode.y) * this.progress;
+                
+                this.nextSignalState = 'G';
             }
             
-            updateDirection() {
-                if(this.pathIdx >= this.path.length) return;
-                let ce = state.edges.get(this.path[this.pathIdx]);
-                if(this.pathIdx > 0) {
-                    let pe = state.edges.get(this.path[this.pathIdx-1]);
-                    // If current edge n1 connects to previous edge, we move n1->n2
-                    if(ce.n1 === pe.n1 || ce.n1 === pe.n2) this.direction = 1;
-                    else this.direction = -1;
-                } else {
-                    // For first edge, assume n1->n2 if not specified.
-                    // Let's do a simple heuristic based on Y coordinate for demo UP/DOWN.
-                    let n1 = state.nodes.get(ce.n1), n2 = state.nodes.get(ce.n2);
-                    if (this.type.includes('DOWN')) this.direction = n2.y > n1.y ? 1 : -1;
-                    else this.direction = n2.y < n1.y ? 1 : -1;
-                }
-            }
-
             update(dt) {
-                if(this.pathIdx >= this.path.length) return; // Done
-                let edge = state.edges.get(this.path[this.pathIdx]);
-                if(!edge) return;
+                let currEdge = state.edges.get(this.path[this.pathIdx]);
+                if(!currEdge) return;
                 
-                // Weather limits speed
-                let targetSpeed = state.weather ? this.speedMax * 0.6 : this.speedMax;
+                // Register occupancy
+                let myBlock = getBlockForEdge(currEdge.id);
+                if(myBlock) myBlock.occupiedBy = this.id;
+
+                let targetSpeed = this.speedMax;
+                if(state.weather) targetSpeed *= 0.5;
+                if(currEdge.broken) targetSpeed = 0;
+
+                // Lookahead for signals and blocks
+                this.nextSignalState = 'G';
+                let lookAheadEdgeId = this.pathIdx < this.path.length - 1 ? this.path[this.pathIdx+1] : getNextEdge(this);
                 
-                // Broken rail check
-                if(edge.broken) {
-                    targetSpeed = 0; 
+                if (lookAheadEdgeId) {
+                    let nextEdge = state.edges.get(lookAheadEdgeId);
+                    let nextBlock = getBlockForEdge(lookAheadEdgeId);
+                    
+                    // Is there a signal between us and next block?
+                    let signalSeparation = state.signals.find(s => s.edgeId === lookAheadEdgeId || s.edgeId === currEdge.id);
+                    
+                    if (nextBlock && nextBlock !== myBlock) {
+                        if (nextBlock.occupiedBy && nextBlock.occupiedBy !== this.id) {
+                            // Block ahead is occupied!
+                            if (signalSeparation) signalSeparation.state = 'R';
+                            this.nextSignalState = 'R';
+                            
+                            // Stop if we are close to the end of the current edge
+                            if (this.progress > 0.8) {
+                                targetSpeed = 0;
+                            } else {
+                                targetSpeed = this.speedMax * 0.4; // slow down approaching red
+                            }
+                        } else {
+                            if (signalSeparation) signalSeparation.state = 'G';
+                        }
+                    }
+                    
+                    if (nextEdge.broken && this.progress > 0.7) {
+                        targetSpeed = 0;
+                    }
+                } else {
+                    // End of line approaching
+                    if (this.progress > 0.8) targetSpeed = 0;
                 }
 
-                // Simple acceleration
-                if (this.speed < targetSpeed) this.speed += 0.5;
-                if (this.speed > targetSpeed) this.speed -= 0.5;
+                // Physics
+                if (this.speed < targetSpeed) this.speed += 1.0;
+                if (this.speed > targetSpeed) this.speed -= 2.0;
                 if (this.speed < 0) this.speed = 0;
+                
+                // Very small stop clamp
+                if (targetSpeed === 0 && this.speed < 5) this.speed = 0;
 
-                let moveDist = (this.speed / 60) * dt; // rough conversion to grid units
-                this.progress += moveDist / edge.length;
+                if (this.speed > 0) {
+                    let moveDist = (this.speed / 60) * dt; 
+                    this.progress += moveDist / currEdge.length;
+                    
+                    if(this.progress >= 1) {
+                        // Move to next edge
+                        let nextEId = lookAheadEdgeId;
+                        if (nextEId) {
+                            let nextE = state.edges.get(nextEId);
+                            // Determine new direction
+                            let forwardNodeId = this.direction === 1 ? currEdge.n2 : currEdge.n1;
+                            if (nextE.n1 === forwardNodeId) this.direction = 1;
+                            else this.direction = -1;
+                            
+                            this.path.push(nextEId);
+                            this.pathIdx++;
+                            this.progress = 0;
+                            
+                            // Clear old block if we fully left it
+                            if(myBlock) myBlock.occupiedBy = null;
+                        } else {
+                            this.progress = 1; // Stuck at end
+                        }
+                    }
+                }
                 
-                let n1 = state.nodes.get(edge.n1);
-                let n2 = state.nodes.get(edge.n2);
-                
+                // Update Pos
+                currEdge = state.edges.get(this.path[this.pathIdx]); // refresh
+                let n1 = state.nodes.get(currEdge.n1);
+                let n2 = state.nodes.get(currEdge.n2);
                 let startNode = this.direction === 1 ? n1 : n2;
                 let endNode = this.direction === 1 ? n2 : n1;
                 
                 this.x = startNode.x + (endNode.x - startNode.x) * this.progress;
                 this.y = startNode.y + (endNode.y - startNode.y) * this.progress;
-                
-                if(this.progress >= 1) {
-                    this.progress = 0;
-                    this.pathIdx++;
-                    this.updateDirection();
-                    // Loop for demo
-                    if(this.pathIdx >= this.path.length) this.pathIdx = 0; 
-                }
             }
         }
 
         // --- INIT DEFAULT LAYOUT ---
         function initLayout() {
-            // UP Line
-            let upEdges = [];
-            for(let y=40; y>=10; y-=4) {
-                let n1 = addNode(5, y);
-                let n2 = addNode(5, y-4);
-                let e = addEdge(n1, n2);
-                upEdges.push(e.id);
-            }
-            // DOWN Line
-            let dnEdges = [];
-            for(let y=10; y<=40; y+=4) {
-                let n1 = addNode(7, y);
-                let n2 = addNode(7, y+4);
-                let e = addEdge(n1, n2);
-                dnEdges.push(e.id);
+            // Main Line
+            for(let x=10; x<=40; x+=5) {
+                addEdge(addNode(x, 10), addNode(x+5, 10)); // UP
+                addEdge(addNode(x, 12), addNode(x+5, 12)); // DOWN
             }
             
-            state.stations.push({ name: 'Madgaon (MAO)', x: 4, y: 38, w: 5, h: 2 });
-            state.stations.push({ name: 'Karmali (KRMI)', x: 4, y: 28, w: 5, h: 2 });
-            state.stations.push({ name: 'Thivim (THVM)', x: 4, y: 18, w: 5, h: 2 });
-            state.stations.push({ name: 'Pernem (PERN)', x: 4, y: 8, w: 5, h: 2 });
+            // Loop at x=20
+            addEdge(addNode(20, 10), addNode(22, 8));
+            addEdge(addNode(22, 8), addNode(28, 8));
+            addEdge(addNode(28, 8), addNode(30, 10));
 
-            // Signals between stations
-            state.signals.push({ edgeId: upEdges[2], pos: 0.5, state: 'G' });
-            state.signals.push({ edgeId: upEdges[5], pos: 0.5, state: 'G' });
-            state.signals.push({ edgeId: dnEdges[2], pos: 0.5, state: 'G' });
-            state.signals.push({ edgeId: dnEdges[5], pos: 0.5, state: 'G' });
+            state.stations.push({ name: 'Alpha Station', x: 12, y: 11, w: 4, h: 4 });
+            state.stations.push({ name: 'Beta Station', x: 38, y: 11, w: 4, h: 4 });
 
-            state.trains.push(new Train('T1', '22229 Vande Bharat (UP)', 'Premium UP', CONFIG.colors.trainPre, upEdges, 130));
-            state.trains.push(new Train('T2', '12051 Jan Shatabdi (DN)', 'Express DOWN', CONFIG.colors.trainExp, dnEdges, 100));
-            state.trains.push(new Train('T3', 'BOXN Coal Rake 42 (UP)', 'Freight UP', CONFIG.colors.trainFrt, upEdges, 60));
-            
-            // offset T3 progress
-            state.trains[2].pathIdx = 3; 
+            state.signals.push({ edgeId: '20,10_25,10', pos: 0.1, state: 'G' });
+            state.signals.push({ edgeId: '25,10_30,10', pos: 0.1, state: 'G' });
+            state.signals.push({ edgeId: '22,8_28,8', pos: 0.1, state: 'G' });
+
+            recalculateBlocks();
+
+            state.trains.push(new Train('T1', '22229 Vande Bharat', 'Premium', CONFIG.colors.trainPre, '10,10_15,10', 1));
+            state.trains.push(new Train('T2', 'BOXN Freight', 'Freight', CONFIG.colors.trainFrt, '40,12_45,12', -1));
 
             // Center Camera
-            state.camera.x = -6 * CONFIG.gridSize * state.camera.zoom + canvas.width/2;
-            state.camera.y = -25 * CONFIG.gridSize * state.camera.zoom + canvas.height/2;
+            state.camera.x = 0; 
+            state.camera.y = 0;
+            state.camera.zoom = 1.2;
+            
+            // Center map on screen
+            setTimeout(() => {
+                state.camera.x = canvas.width/2 - 25 * CONFIG.gridSize * state.camera.zoom;
+                state.camera.y = canvas.height/2 - 11 * CONFIG.gridSize * state.camera.zoom;
+            }, 100);
         }
 
-        // --- INPUT ---
-        const canvas = document.getElementById('sim-canvas');
-        const ctx = canvas.getContext('2d');
-        function resize() { canvas.width = canvas.parentElement.clientWidth; canvas.height = canvas.parentElement.clientHeight; }
-        window.addEventListener('resize', resize); resize();
-
-        let isDragging = false;
-        let lastMouse = {x: 0, y: 0};
+        // --- INPUT HANDLING ---
+        let isPanning = false;
         
         canvas.addEventListener('mousedown', (e) => {
-            if (e.button === 1 || e.button === 2) { isDragging = true; lastMouse = {x: e.clientX, y: e.clientY}; return; }
+            const mPos = getMousePos(e);
             
-            if (state.tool === 'select') {
-                isDragging = true; lastMouse = {x: e.clientX, y: e.clientY};
-                // Check train click
-                state.selectedTrain = null;
-                for(let tr of state.trains) {
-                    let screenX = tr.x * CONFIG.gridSize * state.camera.zoom + state.camera.x;
-                    let screenY = tr.y * CONFIG.gridSize * state.camera.zoom + state.camera.y;
-                    if(Math.abs(e.clientX - screenX) < 20 && Math.abs(e.clientY - screenY) < 20) {
-                        state.selectedTrain = tr;
-                        updateInfoPanel();
-                        break;
-                    }
-                }
-                if(!state.selectedTrain) document.getElementById('info-panel').style.display = 'none';
-            } else if (state.tool === 'track') {
-                state.dragStart = { ...state.hoveredGrid };
+            // Middle click or Right click pan
+            if (e.button === 1 || e.button === 2 || (e.button === 0 && state.tool === 'select')) {
+                isPanning = true;
+                document.getElementById('canvas-container').classList.add('panning');
+                return;
+            }
+            
+            if (e.button !== 0) return; // Only left clicks for tools
+
+            const wPos = screenToWorld(mPos.x, mPos.y);
+            const grid = worldToGrid(wPos.x, wPos.y);
+            
+            if (state.tool === 'track') {
+                state.dragStart = { ...grid };
             } else if (state.tool === 'delete') {
-                let edge = getEdgeAt(state.hoveredGrid.x, state.hoveredGrid.y);
-                if(edge) removeEdge(edge.id);
+                let edge = getEdgeAt(wPos.x, wPos.y);
+                if(edge) { removeEdge(edge.id); showToast("Track deleted"); }
             } else if (state.tool === 'break_rail') {
-                let edge = getEdgeAt(state.hoveredGrid.x, state.hoveredGrid.y);
-                if(edge) {
-                    edge.broken = !edge.broken;
-                    if(edge.broken) state.brokenEdges.add(edge.id);
-                    else state.brokenEdges.delete(edge.id);
+                let edge = getEdgeAt(wPos.x, wPos.y);
+                if(edge) { 
+                    edge.broken = !edge.broken; 
+                    showToast(edge.broken ? "Rail Broken!" : "Rail Repaired");
                 }
             } else if (state.tool === 'signal') {
-                let edge = getEdgeAt(state.hoveredGrid.x, state.hoveredGrid.y);
+                let edge = getEdgeAt(wPos.x, wPos.y);
                 if(edge) {
                     state.signals.push({ edgeId: edge.id, pos: 0.5, state: 'G' });
+                    recalculateBlocks();
+                    showToast("Signal Placed");
                 }
             } else if (state.tool === 'station') {
                 let n = prompt("Enter Station Name:");
-                if(n) state.stations.push({ name: n, x: state.hoveredGrid.x, y: state.hoveredGrid.y, w: 4, h: 2 });
+                if(n) {
+                    state.stations.push({ name: n, x: grid.x, y: grid.y, w: 4, h: 3 });
+                    showToast("Station Created");
+                }
+            } else if (state.tool === 'train') {
+                let edge = getEdgeAt(wPos.x, wPos.y);
+                if(edge) {
+                    const types = ['Premium', 'Express', 'Freight'];
+                    const colors = [CONFIG.colors.trainPre, CONFIG.colors.trainExp, CONFIG.colors.trainFrt];
+                    let tIdx = Math.floor(Math.random() * 3);
+                    let n = prompt("Enter Train Name:", "New Train");
+                    if(n) {
+                        state.trains.push(new Train('T'+Date.now(), n, types[tIdx], colors[tIdx], edge.id, 1));
+                        showToast("Train Spawned");
+                    }
+                }
             }
         });
         
         canvas.addEventListener('mousemove', (e) => {
-            const gx = (e.clientX - state.camera.x) / (CONFIG.gridSize * state.camera.zoom);
-            const gy = (e.clientY - state.camera.y) / (CONFIG.gridSize * state.camera.zoom);
-            state.hoveredGrid = { x: Math.round(gx), y: Math.round(gy) };
+            const mPos = getMousePos(e);
             
-            if (isDragging && (state.tool === 'select' || e.button === 1 || e.button === 2)) {
-                state.camera.x += e.clientX - lastMouse.x;
-                state.camera.y += e.clientY - lastMouse.y;
-                lastMouse = {x: e.clientX, y: e.clientY};
+            if (isPanning) {
+                state.camera.x += e.movementX;
+                state.camera.y += e.movementY;
             }
+            
+            const wPos = screenToWorld(mPos.x, mPos.y);
+            state.hoveredGrid = worldToGrid(wPos.x, wPos.y);
         });
         
         canvas.addEventListener('mouseup', (e) => {
-            isDragging = false;
-            if (state.tool === 'track' && state.dragStart) {
+            isPanning = false;
+            document.getElementById('canvas-container').classList.remove('panning');
+            
+            if (e.button === 0 && state.tool === 'select' && !isPanning) {
+                const mPos = getMousePos(e);
+                const wPos = screenToWorld(mPos.x, mPos.y);
+                
+                state.selectedTrain = null;
+                for(let tr of state.trains) {
+                    let tx = tr.x * CONFIG.gridSize;
+                    let ty = tr.y * CONFIG.gridSize;
+                    if(Math.abs(wPos.x - tx) < 20 && Math.abs(wPos.y - ty) < 20) {
+                        state.selectedTrain = tr;
+                        break;
+                    }
+                }
+                updateInfoPanel();
+            }
+
+            if (e.button === 0 && state.tool === 'track' && state.dragStart) {
                 if (state.dragStart.x !== state.hoveredGrid.x || state.dragStart.y !== state.hoveredGrid.y) {
                     let n1 = addNode(state.dragStart.x, state.dragStart.y);
                     let n2 = addNode(state.hoveredGrid.x, state.hoveredGrid.y);
@@ -336,14 +540,19 @@
                 state.dragStart = null;
             }
         });
+
         canvas.addEventListener('contextmenu', e => e.preventDefault());
+        
         canvas.addEventListener('wheel', (e) => {
             e.preventDefault();
-            const z = -e.deltaY * 0.001;
-            const newZ = Math.max(0.2, Math.min(3, state.camera.zoom + z));
-            state.camera.x = e.clientX - (e.clientX - state.camera.x) * (newZ / state.camera.zoom);
-            state.camera.y = e.clientY - (e.clientY - state.camera.y) * (newZ / state.camera.zoom);
-            state.camera.zoom = newZ;
+            const mPos = getMousePos(e);
+            const zoomAmount = -e.deltaY * 0.001;
+            const newZoom = Math.max(0.3, Math.min(4, state.camera.zoom + zoomAmount));
+            
+            // Zoom toward mouse
+            state.camera.x = mPos.x - (mPos.x - state.camera.x) * (newZoom / state.camera.zoom);
+            state.camera.y = mPos.y - (mPos.y - state.camera.y) * (newZoom / state.camera.zoom);
+            state.camera.zoom = newZoom;
         });
 
         // --- UI BINDINGS ---
@@ -352,8 +561,7 @@
                 document.querySelectorAll('.tool-btn').forEach(b => b.classList.remove('active'));
                 btn.classList.add('active');
                 state.tool = btn.dataset.tool;
-                document.getElementById('canvas-container').className = state.tool !== 'select' ? 'tool-active' : '';
-                document.getElementById('disrupt-rail').classList.remove('active');
+                document.getElementById('canvas-container').className = (state.tool !== 'select' && state.tool !== 'delete') ? 'tool-active' : '';
             });
         });
         document.querySelectorAll('.speed-btn').forEach(btn => {
@@ -361,51 +569,89 @@
                 document.querySelectorAll('.speed-btn').forEach(b => b.classList.remove('active'));
                 btn.classList.add('active');
                 CONFIG.simSpeed = parseFloat(btn.dataset.speed);
+                showToast(btn.dataset.speed + "x Speed");
             });
         });
-        document.getElementById('btn-play').addEventListener('click', (e) => { state.isPaused = false; e.target.classList.add('active'); document.getElementById('btn-pause').classList.remove('active'); });
-        document.getElementById('btn-pause').addEventListener('click', (e) => { state.isPaused = true; e.target.classList.add('active'); document.getElementById('btn-play').classList.remove('active'); });
+        
+        document.getElementById('btn-play').addEventListener('click', (e) => { 
+            state.isPaused = false; 
+            e.currentTarget.classList.add('active'); 
+            document.getElementById('btn-pause').classList.remove('active'); 
+        });
+        document.getElementById('btn-pause').addEventListener('click', (e) => { 
+            state.isPaused = true; 
+            e.currentTarget.classList.add('active'); 
+            document.getElementById('btn-play').classList.remove('active'); 
+        });
         
         document.getElementById('disrupt-weather').addEventListener('click', (e) => {
             state.weather = !state.weather;
-            document.getElementById('disruption-overlay').style.display = state.weather ? 'block' : 'none';
-            document.getElementById('disruption-overlay').className = state.weather ? 'weather-rain' : '';
-            e.target.classList.toggle('active', state.weather);
+            e.currentTarget.classList.toggle('active', state.weather);
+            if(state.weather) {
+                showToast("Severe Weather Warning");
+                // Init particles
+                state.particles = [];
+                for(let i=0; i<300; i++) {
+                    state.particles.push({
+                        x: Math.random() * canvas.width,
+                        y: Math.random() * canvas.height,
+                        s: Math.random() * 5 + 5
+                    });
+                }
+            }
         });
-        document.getElementById('disrupt-rail').addEventListener('click', (e) => {
-            document.querySelectorAll('.tool-btn').forEach(b => b.classList.remove('active'));
-            state.tool = 'break_rail';
-            e.target.classList.add('active');
-        });
-        document.getElementById('disrupt-clear').addEventListener('click', () => {
+        
+        document.getElementById('btn-clear-faults').addEventListener('click', () => {
             state.weather = false;
             document.getElementById('disrupt-weather').classList.remove('active');
-            document.getElementById('disruption-overlay').style.display = 'none';
-            for(let id of state.brokenEdges) if(state.edges.has(id)) state.edges.get(id).broken = false;
-            state.brokenEdges.clear();
+            for(let [id, e] of state.edges) e.broken = false;
+            showToast("All faults repaired");
         });
 
         function updateInfoPanel() {
-            if(!state.selectedTrain) return;
             const p = document.getElementById('info-panel');
+            if(!state.selectedTrain) {
+                p.style.display = 'none';
+                return;
+            }
             p.style.display = 'block';
-            document.getElementById('info-title').innerText = state.selectedTrain.name;
-            document.getElementById('info-l1').innerHTML = `Type: <span class="highlight" style="color:${state.selectedTrain.color}">${state.selectedTrain.type}</span>`;
-            document.getElementById('info-l2').innerHTML = `Speed: <span class="highlight">${Math.round(state.selectedTrain.speed)} km/h</span>`;
-            document.getElementById('info-l3').innerHTML = `Status: ${state.selectedTrain.speed === 0 ? '<span style="color:#ef4444">Stopped</span>' : '<span style="color:#22c55e">Moving</span>'}`;
+            document.getElementById('info-title').firstElementChild.innerText = state.selectedTrain.name;
+            document.getElementById('info-type').innerText = state.selectedTrain.type;
+            document.getElementById('info-type').style.color = state.selectedTrain.color;
+            
+            let spd = Math.round(state.selectedTrain.speed);
+            document.getElementById('info-speed').innerText = spd + " km/h";
+            
+            let badge = document.getElementById('info-badge');
+            if(spd === 0) {
+                badge.className = 'status-badge status-stopped';
+                badge.innerText = 'STOPPED';
+            } else {
+                badge.className = 'status-badge status-moving';
+                badge.innerText = 'MOVING';
+            }
+            
+            let sigStr = state.selectedTrain.nextSignalState;
+            let sigEl = document.getElementById('info-signal');
+            sigEl.innerText = sigStr === 'G' ? 'Clear (Green)' : sigStr === 'R' ? 'Danger (Red)' : 'Caution';
+            sigEl.style.color = sigStr === 'G' ? CONFIG.colors.sigG : CONFIG.colors.sigR;
         }
 
-        // --- RENDER & UPDATE ---
+        // --- RENDER LOOP ---
         let lastTime = performance.now();
         function loop(time) {
             let dt = (time - lastTime) * 0.01 * CONFIG.simSpeed;
             lastTime = time;
             
+            // Clear occupancy
+            for(let b of state.blocks) b.occupiedBy = null;
+
             if(!state.isPaused) {
                 for(let tr of state.trains) tr.update(dt);
-                if(state.selectedTrain) updateInfoPanel();
+                if(state.selectedTrain && time % 200 < 20) updateInfoPanel();
             }
 
+            // Draw Background
             ctx.fillStyle = CONFIG.colors.bgDark;
             ctx.fillRect(0, 0, canvas.width, canvas.height);
             
@@ -415,39 +661,46 @@
             
             const gs = CONFIG.gridSize;
             
-            // Grid
+            // Grid Lines (Subtle)
             const vSX = Math.floor(-state.camera.x / (gs * state.camera.zoom));
             const vSY = Math.floor(-state.camera.y / (gs * state.camera.zoom));
             const vEX = vSX + Math.ceil(canvas.width / (gs * state.camera.zoom));
             const vEY = vSY + Math.ceil(canvas.height / (gs * state.camera.zoom));
-            for(let x=vSX; x<=vEX; x++) for(let y=vSY; y<=vEY; y++) if((x+y)%2===0) { ctx.fillStyle = CONFIG.colors.bgLight; ctx.fillRect(x*gs, y*gs, gs, gs); }
+            
+            ctx.lineWidth = 1;
+            ctx.strokeStyle = 'rgba(255,255,255,0.03)';
+            ctx.beginPath();
+            for(let x=vSX; x<=vEX; x++) { ctx.moveTo(x*gs, vSY*gs); ctx.lineTo(x*gs, vEY*gs); }
+            for(let y=vSY; y<=vEY; y++) { ctx.moveTo(vSX*gs, y*gs); ctx.lineTo(vEX*gs, y*gs); }
+            ctx.stroke();
 
             // Edges (Tracks)
             for (let [id, edge] of state.edges) {
                 let n1 = state.nodes.get(edge.n1), n2 = state.nodes.get(edge.n2);
+                let isHovered = (state.tool === 'delete' || state.tool === 'break_rail' || state.tool === 'signal' || state.tool === 'train') && getEdgeAt(state.hoveredGrid.x * gs, state.hoveredGrid.y * gs) === edge;
                 
-                // Selection glow
-                if (state.selectedTrain && state.selectedTrain.path.includes(id)) {
-                    ctx.strokeStyle = state.selectedTrain.color;
+                // Track Glow for selection/hover
+                if ((state.selectedTrain && state.selectedTrain.path.includes(id)) || isHovered) {
+                    ctx.strokeStyle = edge.broken ? '#ef4444' : CONFIG.colors.trackGlow;
                     ctx.globalAlpha = 0.4;
-                    ctx.lineWidth = 14;
+                    ctx.lineWidth = 18;
                     ctx.beginPath(); ctx.moveTo(n1.x*gs, n1.y*gs); ctx.lineTo(n2.x*gs, n2.y*gs); ctx.stroke();
                     ctx.globalAlpha = 1.0;
                 }
                 
-                // Broken highlight
+                // Broken highlight permanent
                 if (edge.broken) {
-                    ctx.strokeStyle = '#ef4444';
-                    ctx.lineWidth = 12;
+                    ctx.strokeStyle = 'rgba(239, 68, 68, 0.6)';
+                    ctx.lineWidth = 14;
                     ctx.beginPath(); ctx.moveTo(n1.x*gs, n1.y*gs); ctx.lineTo(n2.x*gs, n2.y*gs); ctx.stroke();
                 }
 
                 // Ties
-                ctx.strokeStyle = CONFIG.colors.tie; ctx.setLineDash([2, 6]); ctx.lineWidth = 8;
+                ctx.strokeStyle = CONFIG.colors.tie; ctx.setLineDash([3, 7]); ctx.lineWidth = 10;
                 ctx.beginPath(); ctx.moveTo(n1.x*gs, n1.y*gs); ctx.lineTo(n2.x*gs, n2.y*gs); ctx.stroke();
                 
                 // Rails
-                ctx.strokeStyle = CONFIG.colors.track; ctx.setLineDash([]); ctx.lineWidth = 3;
+                ctx.strokeStyle = CONFIG.colors.track; ctx.setLineDash([]); ctx.lineWidth = 4;
                 ctx.beginPath(); ctx.moveTo(n1.x*gs, n1.y*gs); ctx.lineTo(n2.x*gs, n2.y*gs); ctx.stroke();
             }
 
@@ -458,44 +711,118 @@
                     let n1 = state.nodes.get(edge.n1), n2 = state.nodes.get(edge.n2);
                     let sx = n1.x + (n2.x - n1.x) * sig.pos;
                     let sy = n1.y + (n2.y - n1.y) * sig.pos;
+                    
+                    // Signal pole
+                    ctx.fillStyle = '#1e293b';
+                    ctx.fillRect(sx*gs + 6, sy*gs - 6, 4, 12);
+                    
+                    // Light
                     ctx.fillStyle = sig.state === 'G' ? CONFIG.colors.sigG : sig.state === 'R' ? CONFIG.colors.sigR : CONFIG.colors.sigY;
-                    ctx.beginPath(); ctx.arc(sx*gs + 6, sy*gs, 4, 0, Math.PI*2); ctx.fill();
-                    ctx.strokeStyle = '#000'; ctx.lineWidth=1; ctx.stroke();
+                    ctx.beginPath(); ctx.arc(sx*gs + 8, sy*gs, 5, 0, Math.PI*2); ctx.fill();
+                    
+                    // Glow
+                    ctx.shadowBlur = 10; ctx.shadowColor = ctx.fillStyle;
+                    ctx.beginPath(); ctx.arc(sx*gs + 8, sy*gs, 3, 0, Math.PI*2); ctx.fill();
+                    ctx.shadowBlur = 0;
                 }
             }
 
             // Stations
             for (let stn of state.stations) {
-                ctx.fillStyle = '#1e293b'; ctx.fillRect(stn.x*gs - 10, stn.y*gs - gs*stn.h/2, gs*stn.w, gs*stn.h);
-                ctx.fillStyle = '#f8fafc'; ctx.font = '12px Inter'; ctx.fillText(stn.name, stn.x*gs, stn.y*gs - 10);
+                let sx = stn.x*gs;
+                let sy = stn.y*gs;
+                
+                ctx.fillStyle = '#1e293b'; 
+                ctx.beginPath(); ctx.roundRect(sx - 20, sy - gs*stn.h/2, gs*stn.w, gs*stn.h, 8); ctx.fill();
+                ctx.strokeStyle = '#475569'; ctx.lineWidth = 2; ctx.stroke();
+                
+                ctx.fillStyle = '#f8fafc'; ctx.font = '600 14px Inter'; 
+                ctx.fillText(stn.name, sx - 10, sy - gs*stn.h/2 + 20);
             }
 
             // Trains
             for (let tr of state.trains) {
-                let headSize = state.selectedTrain === tr ? 1.5 : 1;
+                let isSel = state.selectedTrain === tr;
+                let headSize = isSel ? 1.4 : 1;
+                
+                let tx = tr.x*gs; let ty = tr.y*gs;
+                
+                // Orient rect along edge
+                let currEdge = state.edges.get(tr.path[tr.pathIdx]);
+                let angle = 0;
+                if(currEdge) {
+                    let n1 = state.nodes.get(currEdge.n1), n2 = state.nodes.get(currEdge.n2);
+                    let start = tr.direction === 1 ? n1 : n2;
+                    let end = tr.direction === 1 ? n2 : n1;
+                    angle = Math.atan2(end.y - start.y, end.x - start.x);
+                }
+
+                ctx.save();
+                ctx.translate(tx, ty);
+                ctx.rotate(angle);
+                
                 ctx.fillStyle = tr.color;
-                ctx.shadowColor = tr.color;
-                ctx.shadowBlur = state.selectedTrain === tr ? 10 : 0;
+                if(isSel) { ctx.shadowColor = tr.color; ctx.shadowBlur = 15; }
                 
-                ctx.fillRect(tr.x*gs - 5*headSize, tr.y*gs - 8*headSize, 10*headSize, 16*headSize);
-                ctx.shadowBlur = 0;
+                // Locomotive body
+                ctx.beginPath(); ctx.roundRect(-12*headSize, -8*headSize, 24*headSize, 16*headSize, 4); ctx.fill();
                 
-                if(state.camera.zoom > 0.8 || state.selectedTrain === tr) {
-                    ctx.fillStyle = '#f8fafc'; ctx.font = '10px Inter';
-                    ctx.fillText(tr.name, tr.x*gs + 10, tr.y*gs);
+                // Cab window
+                ctx.fillStyle = '#0f172a';
+                ctx.fillRect(4*headSize, -6*headSize, 6*headSize, 12*headSize);
+                
+                ctx.restore();
+                
+                // Label
+                if(state.camera.zoom > 0.7 || isSel) {
+                    ctx.fillStyle = '#ffffff'; ctx.font = '600 12px Inter';
+                    
+                    // Small background pill for text
+                    let tw = ctx.measureText(tr.name).width;
+                    ctx.fillStyle = 'rgba(15,23,42,0.7)';
+                    ctx.beginPath(); ctx.roundRect(tx - tw/2 - 4, ty + 12, tw + 8, 20, 10); ctx.fill();
+                    
+                    ctx.fillStyle = '#ffffff';
+                    ctx.fillText(tr.name, tx - tw/2, ty + 26);
                 }
             }
 
-            // Editor UI
+            // Editor UI (Ghost)
             if (state.tool === 'track') {
-                ctx.fillStyle = 'rgba(255,255,255,0.3)'; ctx.beginPath(); ctx.arc(state.hoveredGrid.x*gs, state.hoveredGrid.y*gs, 5, 0, Math.PI*2); ctx.fill();
+                ctx.fillStyle = 'rgba(56, 189, 248, 0.4)'; 
+                ctx.beginPath(); ctx.arc(state.hoveredGrid.x*gs, state.hoveredGrid.y*gs, 8, 0, Math.PI*2); ctx.fill();
+                
                 if (state.dragStart) {
-                    ctx.strokeStyle = CONFIG.colors.trackGlow; ctx.lineWidth = 3;
+                    ctx.strokeStyle = CONFIG.colors.trackGlow; ctx.lineWidth = 4;
                     ctx.beginPath(); ctx.moveTo(state.dragStart.x*gs, state.dragStart.y*gs); ctx.lineTo(state.hoveredGrid.x*gs, state.hoveredGrid.y*gs); ctx.stroke();
                 }
+            } else if (state.tool === 'station') {
+                ctx.fillStyle = 'rgba(51, 65, 85, 0.5)';
+                ctx.fillRect(state.hoveredGrid.x*gs - 20, state.hoveredGrid.y*gs - gs*1.5, gs*4, gs*3);
             }
             
             ctx.restore();
+            
+            // Screen-space Weather Particle System
+            if(state.weather) {
+                ctx.fillStyle = 'rgba(15, 23, 42, 0.3)'; // Fog
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                
+                ctx.strokeStyle = 'rgba(200, 220, 255, 0.4)';
+                ctx.lineWidth = 1.5;
+                ctx.beginPath();
+                for(let p of state.particles) {
+                    if(!state.isPaused) {
+                        p.y += p.s * CONFIG.simSpeed * dt * 5;
+                        p.x += (p.s * 0.2) * CONFIG.simSpeed * dt * 5; // slight wind
+                        if(p.y > canvas.height) { p.y = -10; p.x = Math.random() * canvas.width; }
+                    }
+                    ctx.moveTo(p.x, p.y);
+                    ctx.lineTo(p.x + p.s*0.2, p.y + p.s);
+                }
+                ctx.stroke();
+            }
+
             requestAnimationFrame(loop);
         }
 
