@@ -1,0 +1,506 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Track Simulation</title>
+    <style>
+        body, html { margin: 0; padding: 0; width: 100%; height: 100%; background-color: #121824; color: #e2e8f0; font-family: 'Inter', sans-serif; overflow: hidden; display: flex; flex-direction: column; user-select: none; }
+        #ui-bar { background-color: #1e293b; padding: 10px 15px; display: flex; gap: 15px; align-items: center; border-bottom: 1px solid #334155; z-index: 10; flex-wrap: wrap; }
+        .btn-group { display: flex; gap: 5px; background: #0f172a; padding: 4px; border-radius: 6px; border: 1px solid #334155; }
+        button { background-color: #334155; color: #f8fafc; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 13px; font-weight: 500; transition: background 0.2s; }
+        button:hover { background-color: #475569; }
+        button.active { background-color: #3b82f6; color: white; }
+        button.danger { background-color: #ef4444; }
+        button.danger:hover { background-color: #f87171; }
+        
+        #canvas-container { flex-grow: 1; position: relative; cursor: grab; }
+        #canvas-container:active { cursor: grabbing; }
+        #canvas-container.tool-active { cursor: crosshair; }
+        canvas { display: block; width: 100%; height: 100%; }
+        
+        #info-panel { position: absolute; bottom: 20px; left: 20px; background: rgba(15, 23, 42, 0.85); backdrop-filter: blur(8px); border: 1px solid #334155; padding: 15px; border-radius: 8px; min-width: 250px; display: none; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.5); pointer-events: none; }
+        #info-panel h3 { margin: 0 0 10px 0; font-size: 16px; color: #f8fafc; }
+        #info-panel p { margin: 5px 0; font-size: 13px; color: #94a3b8; }
+        .highlight { color: #38bdf8; font-weight: bold; }
+        
+        #disruption-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 5; display: none; }
+        .weather-rain { background: linear-gradient(to bottom, rgba(255,255,255,0) 0%, rgba(200,220,255,0.15) 100%); animation: rain 0.3s linear infinite; }
+        @keyframes rain { 0% { transform: translateY(-100%); } 100% { transform: translateY(100%); } }
+    </style>
+</head>
+<body>
+
+    <div id="ui-bar">
+        <div class="btn-group">
+            <button id="btn-play" class="active">▶ Play</button>
+            <button id="btn-pause">⏸ Pause</button>
+        </div>
+        <div class="btn-group">
+            <button class="speed-btn active" data-speed="1">1x</button>
+            <button class="speed-btn" data-speed="2">2x</button>
+            <button class="speed-btn" data-speed="5">5x</button>
+            <button class="speed-btn" data-speed="10">10x</button>
+        </div>
+        <div style="width: 1px; height: 24px; background: #334155; margin: 0 5px;"></div>
+        <div class="btn-group">
+            <button id="tool-select" class="tool-btn active" data-tool="select">👆 Select</button>
+            <button id="tool-track" class="tool-btn" data-tool="track">🛤️ Track</button>
+            <button id="tool-station" class="tool-btn" data-tool="station">🏢 Station</button>
+            <button id="tool-signal" class="tool-btn" data-tool="signal">🚦 Signal</button>
+            <button id="tool-delete" class="tool-btn" data-tool="delete">🗑️ Delete</button>
+        </div>
+        <div style="width: 1px; height: 24px; background: #334155; margin: 0 5px;"></div>
+        <div class="btn-group">
+            <button id="disrupt-weather" class="danger">🌧️ Weather</button>
+            <button id="disrupt-rail" class="danger" data-tool="break_rail">⚠️ Broken Rail</button>
+            <button id="disrupt-clear" style="background:#0f172a; border: 1px solid #334155;">✨ Clear All</button>
+        </div>
+    </div>
+
+    <div id="canvas-container">
+        <div id="disruption-overlay"></div>
+        <canvas id="sim-canvas"></canvas>
+        <div id="info-panel">
+            <h3 id="info-title">Title</h3>
+            <p id="info-l1">Line 1</p>
+            <p id="info-l2">Line 2</p>
+            <p id="info-l3">Line 3</p>
+        </div>
+    </div>
+
+    <script>
+        const CONFIG = {
+            gridSize: 30,
+            simSpeed: 1,
+            isPaused: false,
+            colors: {
+                bgDark: '#121212', bgLight: '#1e1e1e',
+                track: '#64748b', trackGlow: '#0ea5e9', tie: '#334155',
+                trainPre: '#ef4444', trainExp: '#f59e0b', trainFrt: '#3b82f6',
+                sigG: '#22c55e', sigY: '#eab308', sigR: '#ef4444', sigOff: '#475569'
+            }
+        };
+
+        const state = {
+            camera: { x: 0, y: 0, zoom: 1.5 },
+            tool: 'select',
+            hoveredGrid: { x: 0, y: 0 },
+            dragStart: null,
+            selectedTrain: null,
+            selectedEdge: null,
+            weather: false,
+            brokenEdges: new Set(),
+            stations: [],
+            signals: [],
+            trains: [],
+            nodes: new Map(),
+            edges: new Map()
+        };
+
+        // --- CORE MATH & GRAPH ---
+        function getId(x, y) { return `${x},${y}`; }
+        function addNode(x, y) {
+            let id = getId(x, y);
+            if (!state.nodes.has(id)) state.nodes.set(id, { id, x, y, edges: [] });
+            return id;
+        }
+        function addEdge(n1_id, n2_id) {
+            if(n1_id === n2_id) return null;
+            let id = `${n1_id}_${n2_id}`;
+            let idRev = `${n2_id}_${n1_id}`;
+            if (state.edges.has(id) || state.edges.has(idRev)) return;
+            
+            let n1 = state.nodes.get(n1_id);
+            let n2 = state.nodes.get(n2_id);
+            let length = Math.sqrt(Math.pow(n2.x - n1.x, 2) + Math.pow(n2.y - n1.y, 2));
+            
+            let edge = { id, n1: n1_id, n2: n2_id, length, signals: [], broken: false };
+            state.edges.set(id, edge);
+            n1.edges.push(id);
+            n2.edges.push(id);
+            return edge;
+        }
+        function removeEdge(id) {
+            if(!state.edges.has(id)) return;
+            let edge = state.edges.get(id);
+            state.nodes.get(edge.n1).edges = state.nodes.get(edge.n1).edges.filter(e => e !== id);
+            state.nodes.get(edge.n2).edges = state.nodes.get(edge.n2).edges.filter(e => e !== id);
+            state.signals = state.signals.filter(s => s.edgeId !== id);
+            state.brokenEdges.delete(id);
+            state.edges.delete(id);
+        }
+        function distToSegment(p, v, w) {
+            let l2 = Math.pow(w.x - v.x, 2) + Math.pow(w.y - v.y, 2);
+            if (l2 === 0) return Math.sqrt(Math.pow(p.x - v.x, 2) + Math.pow(p.y - v.y, 2));
+            let t = ((p.x - v.x) * (w.x - v.x) + (p.y - v.y) * (w.y - v.y)) / l2;
+            t = Math.max(0, Math.min(1, t));
+            return Math.sqrt(Math.pow(p.x - (v.x + t * (w.x - v.x)), 2) + Math.pow(p.y - (v.y + t * (w.y - v.y)), 2));
+        }
+        function getEdgeAt(gx, gy) {
+            for (let [id, edge] of state.edges) {
+                let n1 = state.nodes.get(edge.n1);
+                let n2 = state.nodes.get(edge.n2);
+                if (distToSegment({x:gx, y:gy}, n1, n2) < 0.3) return edge;
+            }
+            return null;
+        }
+
+        // --- LOGIC ---
+        // Block is from one signal to the next.
+        // A train moves along its predefined path of edges.
+        class Train {
+            constructor(id, name, type, color, path, speedMax) {
+                this.id = id; this.name = name; this.type = type; this.color = color;
+                this.path = path; // array of edge IDs
+                this.pathIdx = 0;
+                this.progress = 0; // 0 to 1 on current edge
+                this.speedMax = speedMax;
+                this.speed = 0;
+                this.direction = 1; // 1 = n1->n2, -1 = n2->n1
+                this.updateDirection();
+                
+                let startEdge = state.edges.get(this.path[0]);
+                let n = state.nodes.get(this.direction === 1 ? startEdge.n1 : startEdge.n2);
+                this.x = n.x; this.y = n.y;
+            }
+            
+            updateDirection() {
+                if(this.pathIdx >= this.path.length) return;
+                let ce = state.edges.get(this.path[this.pathIdx]);
+                if(this.pathIdx > 0) {
+                    let pe = state.edges.get(this.path[this.pathIdx-1]);
+                    // If current edge n1 connects to previous edge, we move n1->n2
+                    if(ce.n1 === pe.n1 || ce.n1 === pe.n2) this.direction = 1;
+                    else this.direction = -1;
+                } else {
+                    // For first edge, assume n1->n2 if not specified.
+                    // Let's do a simple heuristic based on Y coordinate for demo UP/DOWN.
+                    let n1 = state.nodes.get(ce.n1), n2 = state.nodes.get(ce.n2);
+                    if (this.type.includes('DOWN')) this.direction = n2.y > n1.y ? 1 : -1;
+                    else this.direction = n2.y < n1.y ? 1 : -1;
+                }
+            }
+
+            update(dt) {
+                if(this.pathIdx >= this.path.length) return; // Done
+                let edge = state.edges.get(this.path[this.pathIdx]);
+                if(!edge) return;
+                
+                // Weather limits speed
+                let targetSpeed = state.weather ? this.speedMax * 0.6 : this.speedMax;
+                
+                // Broken rail check
+                if(edge.broken) {
+                    targetSpeed = 0; 
+                }
+
+                // Simple acceleration
+                if (this.speed < targetSpeed) this.speed += 0.5;
+                if (this.speed > targetSpeed) this.speed -= 0.5;
+                if (this.speed < 0) this.speed = 0;
+
+                let moveDist = (this.speed / 60) * dt; // rough conversion to grid units
+                this.progress += moveDist / edge.length;
+                
+                let n1 = state.nodes.get(edge.n1);
+                let n2 = state.nodes.get(edge.n2);
+                
+                let startNode = this.direction === 1 ? n1 : n2;
+                let endNode = this.direction === 1 ? n2 : n1;
+                
+                this.x = startNode.x + (endNode.x - startNode.x) * this.progress;
+                this.y = startNode.y + (endNode.y - startNode.y) * this.progress;
+                
+                if(this.progress >= 1) {
+                    this.progress = 0;
+                    this.pathIdx++;
+                    this.updateDirection();
+                    // Loop for demo
+                    if(this.pathIdx >= this.path.length) this.pathIdx = 0; 
+                }
+            }
+        }
+
+        // --- INIT DEFAULT LAYOUT ---
+        function initLayout() {
+            // UP Line
+            let upEdges = [];
+            for(let y=40; y>=10; y-=4) {
+                let n1 = addNode(5, y);
+                let n2 = addNode(5, y-4);
+                let e = addEdge(n1, n2);
+                upEdges.push(e.id);
+            }
+            // DOWN Line
+            let dnEdges = [];
+            for(let y=10; y<=40; y+=4) {
+                let n1 = addNode(7, y);
+                let n2 = addNode(7, y+4);
+                let e = addEdge(n1, n2);
+                dnEdges.push(e.id);
+            }
+            
+            state.stations.push({ name: 'Madgaon (MAO)', x: 4, y: 38, w: 5, h: 2 });
+            state.stations.push({ name: 'Karmali (KRMI)', x: 4, y: 28, w: 5, h: 2 });
+            state.stations.push({ name: 'Thivim (THVM)', x: 4, y: 18, w: 5, h: 2 });
+            state.stations.push({ name: 'Pernem (PERN)', x: 4, y: 8, w: 5, h: 2 });
+
+            // Signals between stations
+            state.signals.push({ edgeId: upEdges[2], pos: 0.5, state: 'G' });
+            state.signals.push({ edgeId: upEdges[5], pos: 0.5, state: 'G' });
+            state.signals.push({ edgeId: dnEdges[2], pos: 0.5, state: 'G' });
+            state.signals.push({ edgeId: dnEdges[5], pos: 0.5, state: 'G' });
+
+            state.trains.push(new Train('T1', '22229 Vande Bharat (UP)', 'Premium UP', CONFIG.colors.trainPre, upEdges, 130));
+            state.trains.push(new Train('T2', '12051 Jan Shatabdi (DN)', 'Express DOWN', CONFIG.colors.trainExp, dnEdges, 100));
+            state.trains.push(new Train('T3', 'BOXN Coal Rake 42 (UP)', 'Freight UP', CONFIG.colors.trainFrt, upEdges, 60));
+            
+            // offset T3 progress
+            state.trains[2].pathIdx = 3; 
+
+            // Center Camera
+            state.camera.x = -6 * CONFIG.gridSize * state.camera.zoom + canvas.width/2;
+            state.camera.y = -25 * CONFIG.gridSize * state.camera.zoom + canvas.height/2;
+        }
+
+        // --- INPUT ---
+        const canvas = document.getElementById('sim-canvas');
+        const ctx = canvas.getContext('2d');
+        function resize() { canvas.width = canvas.parentElement.clientWidth; canvas.height = canvas.parentElement.clientHeight; }
+        window.addEventListener('resize', resize); resize();
+
+        let isDragging = false;
+        let lastMouse = {x: 0, y: 0};
+        
+        canvas.addEventListener('mousedown', (e) => {
+            if (e.button === 1 || e.button === 2) { isDragging = true; lastMouse = {x: e.clientX, y: e.clientY}; return; }
+            
+            if (state.tool === 'select') {
+                isDragging = true; lastMouse = {x: e.clientX, y: e.clientY};
+                // Check train click
+                state.selectedTrain = null;
+                for(let tr of state.trains) {
+                    let screenX = tr.x * CONFIG.gridSize * state.camera.zoom + state.camera.x;
+                    let screenY = tr.y * CONFIG.gridSize * state.camera.zoom + state.camera.y;
+                    if(Math.abs(e.clientX - screenX) < 20 && Math.abs(e.clientY - screenY) < 20) {
+                        state.selectedTrain = tr;
+                        updateInfoPanel();
+                        break;
+                    }
+                }
+                if(!state.selectedTrain) document.getElementById('info-panel').style.display = 'none';
+            } else if (state.tool === 'track') {
+                state.dragStart = { ...state.hoveredGrid };
+            } else if (state.tool === 'delete') {
+                let edge = getEdgeAt(state.hoveredGrid.x, state.hoveredGrid.y);
+                if(edge) removeEdge(edge.id);
+            } else if (state.tool === 'break_rail') {
+                let edge = getEdgeAt(state.hoveredGrid.x, state.hoveredGrid.y);
+                if(edge) {
+                    edge.broken = !edge.broken;
+                    if(edge.broken) state.brokenEdges.add(edge.id);
+                    else state.brokenEdges.delete(edge.id);
+                }
+            } else if (state.tool === 'signal') {
+                let edge = getEdgeAt(state.hoveredGrid.x, state.hoveredGrid.y);
+                if(edge) {
+                    state.signals.push({ edgeId: edge.id, pos: 0.5, state: 'G' });
+                }
+            } else if (state.tool === 'station') {
+                let n = prompt("Enter Station Name:");
+                if(n) state.stations.push({ name: n, x: state.hoveredGrid.x, y: state.hoveredGrid.y, w: 4, h: 2 });
+            }
+        });
+        
+        canvas.addEventListener('mousemove', (e) => {
+            const gx = (e.clientX - state.camera.x) / (CONFIG.gridSize * state.camera.zoom);
+            const gy = (e.clientY - state.camera.y) / (CONFIG.gridSize * state.camera.zoom);
+            state.hoveredGrid = { x: Math.round(gx), y: Math.round(gy) };
+            
+            if (isDragging && (state.tool === 'select' || e.button === 1 || e.button === 2)) {
+                state.camera.x += e.clientX - lastMouse.x;
+                state.camera.y += e.clientY - lastMouse.y;
+                lastMouse = {x: e.clientX, y: e.clientY};
+            }
+        });
+        
+        canvas.addEventListener('mouseup', (e) => {
+            isDragging = false;
+            if (state.tool === 'track' && state.dragStart) {
+                if (state.dragStart.x !== state.hoveredGrid.x || state.dragStart.y !== state.hoveredGrid.y) {
+                    let n1 = addNode(state.dragStart.x, state.dragStart.y);
+                    let n2 = addNode(state.hoveredGrid.x, state.hoveredGrid.y);
+                    addEdge(n1, n2);
+                }
+                state.dragStart = null;
+            }
+        });
+        canvas.addEventListener('contextmenu', e => e.preventDefault());
+        canvas.addEventListener('wheel', (e) => {
+            e.preventDefault();
+            const z = -e.deltaY * 0.001;
+            const newZ = Math.max(0.2, Math.min(3, state.camera.zoom + z));
+            state.camera.x = e.clientX - (e.clientX - state.camera.x) * (newZ / state.camera.zoom);
+            state.camera.y = e.clientY - (e.clientY - state.camera.y) * (newZ / state.camera.zoom);
+            state.camera.zoom = newZ;
+        });
+
+        // --- UI BINDINGS ---
+        document.querySelectorAll('.tool-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.tool-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                state.tool = btn.dataset.tool;
+                document.getElementById('canvas-container').className = state.tool !== 'select' ? 'tool-active' : '';
+                document.getElementById('disrupt-rail').classList.remove('active');
+            });
+        });
+        document.querySelectorAll('.speed-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.speed-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                CONFIG.simSpeed = parseFloat(btn.dataset.speed);
+            });
+        });
+        document.getElementById('btn-play').addEventListener('click', (e) => { state.isPaused = false; e.target.classList.add('active'); document.getElementById('btn-pause').classList.remove('active'); });
+        document.getElementById('btn-pause').addEventListener('click', (e) => { state.isPaused = true; e.target.classList.add('active'); document.getElementById('btn-play').classList.remove('active'); });
+        
+        document.getElementById('disrupt-weather').addEventListener('click', (e) => {
+            state.weather = !state.weather;
+            document.getElementById('disruption-overlay').style.display = state.weather ? 'block' : 'none';
+            document.getElementById('disruption-overlay').className = state.weather ? 'weather-rain' : '';
+            e.target.classList.toggle('active', state.weather);
+        });
+        document.getElementById('disrupt-rail').addEventListener('click', (e) => {
+            document.querySelectorAll('.tool-btn').forEach(b => b.classList.remove('active'));
+            state.tool = 'break_rail';
+            e.target.classList.add('active');
+        });
+        document.getElementById('disrupt-clear').addEventListener('click', () => {
+            state.weather = false;
+            document.getElementById('disrupt-weather').classList.remove('active');
+            document.getElementById('disruption-overlay').style.display = 'none';
+            for(let id of state.brokenEdges) if(state.edges.has(id)) state.edges.get(id).broken = false;
+            state.brokenEdges.clear();
+        });
+
+        function updateInfoPanel() {
+            if(!state.selectedTrain) return;
+            const p = document.getElementById('info-panel');
+            p.style.display = 'block';
+            document.getElementById('info-title').innerText = state.selectedTrain.name;
+            document.getElementById('info-l1').innerHTML = `Type: <span class="highlight" style="color:${state.selectedTrain.color}">${state.selectedTrain.type}</span>`;
+            document.getElementById('info-l2').innerHTML = `Speed: <span class="highlight">${Math.round(state.selectedTrain.speed)} km/h</span>`;
+            document.getElementById('info-l3').innerHTML = `Status: ${state.selectedTrain.speed === 0 ? '<span style="color:#ef4444">Stopped</span>' : '<span style="color:#22c55e">Moving</span>'}`;
+        }
+
+        // --- RENDER & UPDATE ---
+        let lastTime = performance.now();
+        function loop(time) {
+            let dt = (time - lastTime) * 0.01 * CONFIG.simSpeed;
+            lastTime = time;
+            
+            if(!state.isPaused) {
+                for(let tr of state.trains) tr.update(dt);
+                if(state.selectedTrain) updateInfoPanel();
+            }
+
+            ctx.fillStyle = CONFIG.colors.bgDark;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            ctx.save();
+            ctx.translate(state.camera.x, state.camera.y);
+            ctx.scale(state.camera.zoom, state.camera.zoom);
+            
+            const gs = CONFIG.gridSize;
+            
+            // Grid
+            const vSX = Math.floor(-state.camera.x / (gs * state.camera.zoom));
+            const vSY = Math.floor(-state.camera.y / (gs * state.camera.zoom));
+            const vEX = vSX + Math.ceil(canvas.width / (gs * state.camera.zoom));
+            const vEY = vSY + Math.ceil(canvas.height / (gs * state.camera.zoom));
+            for(let x=vSX; x<=vEX; x++) for(let y=vSY; y<=vEY; y++) if((x+y)%2===0) { ctx.fillStyle = CONFIG.colors.bgLight; ctx.fillRect(x*gs, y*gs, gs, gs); }
+
+            // Edges (Tracks)
+            for (let [id, edge] of state.edges) {
+                let n1 = state.nodes.get(edge.n1), n2 = state.nodes.get(edge.n2);
+                
+                // Selection glow
+                if (state.selectedTrain && state.selectedTrain.path.includes(id)) {
+                    ctx.strokeStyle = state.selectedTrain.color;
+                    ctx.globalAlpha = 0.4;
+                    ctx.lineWidth = 14;
+                    ctx.beginPath(); ctx.moveTo(n1.x*gs, n1.y*gs); ctx.lineTo(n2.x*gs, n2.y*gs); ctx.stroke();
+                    ctx.globalAlpha = 1.0;
+                }
+                
+                // Broken highlight
+                if (edge.broken) {
+                    ctx.strokeStyle = '#ef4444';
+                    ctx.lineWidth = 12;
+                    ctx.beginPath(); ctx.moveTo(n1.x*gs, n1.y*gs); ctx.lineTo(n2.x*gs, n2.y*gs); ctx.stroke();
+                }
+
+                // Ties
+                ctx.strokeStyle = CONFIG.colors.tie; ctx.setLineDash([2, 6]); ctx.lineWidth = 8;
+                ctx.beginPath(); ctx.moveTo(n1.x*gs, n1.y*gs); ctx.lineTo(n2.x*gs, n2.y*gs); ctx.stroke();
+                
+                // Rails
+                ctx.strokeStyle = CONFIG.colors.track; ctx.setLineDash([]); ctx.lineWidth = 3;
+                ctx.beginPath(); ctx.moveTo(n1.x*gs, n1.y*gs); ctx.lineTo(n2.x*gs, n2.y*gs); ctx.stroke();
+            }
+
+            // Signals
+            for(let sig of state.signals) {
+                let edge = state.edges.get(sig.edgeId);
+                if(edge) {
+                    let n1 = state.nodes.get(edge.n1), n2 = state.nodes.get(edge.n2);
+                    let sx = n1.x + (n2.x - n1.x) * sig.pos;
+                    let sy = n1.y + (n2.y - n1.y) * sig.pos;
+                    ctx.fillStyle = sig.state === 'G' ? CONFIG.colors.sigG : sig.state === 'R' ? CONFIG.colors.sigR : CONFIG.colors.sigY;
+                    ctx.beginPath(); ctx.arc(sx*gs + 6, sy*gs, 4, 0, Math.PI*2); ctx.fill();
+                    ctx.strokeStyle = '#000'; ctx.lineWidth=1; ctx.stroke();
+                }
+            }
+
+            // Stations
+            for (let stn of state.stations) {
+                ctx.fillStyle = '#1e293b'; ctx.fillRect(stn.x*gs - 10, stn.y*gs - gs*stn.h/2, gs*stn.w, gs*stn.h);
+                ctx.fillStyle = '#f8fafc'; ctx.font = '12px Inter'; ctx.fillText(stn.name, stn.x*gs, stn.y*gs - 10);
+            }
+
+            // Trains
+            for (let tr of state.trains) {
+                let headSize = state.selectedTrain === tr ? 1.5 : 1;
+                ctx.fillStyle = tr.color;
+                ctx.shadowColor = tr.color;
+                ctx.shadowBlur = state.selectedTrain === tr ? 10 : 0;
+                
+                ctx.fillRect(tr.x*gs - 5*headSize, tr.y*gs - 8*headSize, 10*headSize, 16*headSize);
+                ctx.shadowBlur = 0;
+                
+                if(state.camera.zoom > 0.8 || state.selectedTrain === tr) {
+                    ctx.fillStyle = '#f8fafc'; ctx.font = '10px Inter';
+                    ctx.fillText(tr.name, tr.x*gs + 10, tr.y*gs);
+                }
+            }
+
+            // Editor UI
+            if (state.tool === 'track') {
+                ctx.fillStyle = 'rgba(255,255,255,0.3)'; ctx.beginPath(); ctx.arc(state.hoveredGrid.x*gs, state.hoveredGrid.y*gs, 5, 0, Math.PI*2); ctx.fill();
+                if (state.dragStart) {
+                    ctx.strokeStyle = CONFIG.colors.trackGlow; ctx.lineWidth = 3;
+                    ctx.beginPath(); ctx.moveTo(state.dragStart.x*gs, state.dragStart.y*gs); ctx.lineTo(state.hoveredGrid.x*gs, state.hoveredGrid.y*gs); ctx.stroke();
+                }
+            }
+            
+            ctx.restore();
+            requestAnimationFrame(loop);
+        }
+
+        initLayout();
+        requestAnimationFrame(loop);
+    </script>
+</body>
+</html>

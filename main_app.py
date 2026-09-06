@@ -183,8 +183,9 @@ with col_k4:
 st.markdown("<div style='margin-bottom: 1.25rem;'></div>", unsafe_allow_html=True)
 
 # --- NAVIGATION TABS ---
-tab_trains, tab_schedule, tab_equipment, tab_reroute, tab_order = st.tabs([
+tab_trains, tab_sim, tab_schedule, tab_equipment, tab_reroute, tab_order = st.tabs([
     "🚆 Train Movement Chart",
+    "🚂 Track Simulation",
     "📋 Shadow-Block Scheduling",
     "🔧 Equipment Health",
     "📊 Route Cost Analysis",
@@ -359,6 +360,22 @@ with tab_trains:
         with col_sch2:
             st.markdown("#### Dynamic Crossover")
             st.write("Slower freight and regional trains are routed to loop sidings at crossover junctions, leaving the main line clear for higher-priority express trains.")
+
+# =========================================================================
+# TAB 1.5: TRACK SIMULATION (FACTORIO-STYLE)
+# =========================================================================
+with tab_sim:
+    st.markdown("### Interactive Track Simulation")
+    st.caption("Real-time block section simulation with disruption injection and layout editing.")
+    
+    sim_html_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "assets", "simulation.html")
+    if os.path.exists(sim_html_path):
+        with open(sim_html_path, "r", encoding="utf-8") as f:
+            sim_html_content = f.read()
+        import streamlit.components.v1 as components
+        components.html(sim_html_content, height=700)
+    else:
+        st.error("Simulation engine (simulation.html) not found in assets folder.")
 
 # =========================================================================
 # TAB 2: SHADOW-BLOCK SCHEDULING
