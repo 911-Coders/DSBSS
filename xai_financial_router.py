@@ -2,32 +2,32 @@ import streamlit as st
 import pandas as pd
 import os
 
-st.set_page_config(page_title="Explainable AI Dispatcher", layout="wide")
-st.title("🧠 Explainable AI: Financial Rerouting Engine")
-st.markdown("Transparent Constrained Shortest Path First (CSPF) decision logic.")
+st.set_page_config(page_title="Explainable AI Dispatcher (IR Edition)", layout="wide")
+st.title("🧠 Explainable AI: Financial Rerouting Engine (Indian Railways)")
+st.markdown("Transparent Constrained Shortest Path First (CSPF) decision logic tailored to Indian Railways Gross Tonne Kilometre (GTKM) metrics.")
 
 # ==========================================
-# 1. SETUP: MOCK DATASETS
+# 1. SETUP: INDIAN RAILWAYS DATASETS
 # ==========================================
 @st.cache_data
 def load_mock_data():
     trains_data = {
-        'train_id': ['T-Express-01', 'T-Freight-99'],
-        'weight_tons': [450, 2500],
-        'needs_electricity': [True, False],
-        'priority': [1, 3],
-        'revenue_usd': [25000, 15000],
-        'penalty_per_min_usd': [500, 50]
+        'train_id': ['12951 Rajdhani Exp', 'BOXN Coal Rake 42'],
+        'train_type': ['Premium Passenger', 'Heavy Freight'],
+        'weight_tons': [1100, 4200],  # Rajdhani ~1100t, Loaded BOXN rake ~4200t
+        'needs_electricity': [True, False], # Electric (WAP-7) vs Diesel (WDG-4)
+        'revenue_inr': [3500000, 5000000], 
+        'penalty_per_min_inr': [5000, 500] # High punctuality penalty for premium passenger
     }
     lines_data = {
-        'line_id': ['Line_A', 'Line_B', 'Line_C'],
+        'line_id': ['Line_A (Main Route)', 'Line_B (Bypass)', 'Line_C (Branch)'],
         'status': ['CLEAR', 'CLEAR', 'CLEAR'],
-        'max_weight_tons': [3000, 2000, 4000],
+        'distance_km': [500, 650, 550], 
+        'max_weight_tons': [5000, 2000, 5000], # Branch line has lower axle load limits
         'is_electrified': [True, True, False],
-        'base_ops_cost_usd': [1000, 1500, 1200],
         'current_traffic_count': [2, 4, 1],
         'max_capacity': [5, 5, 5],
-        'estimated_delay_min': [0, 15, 5]
+        'estimated_delay_min': [0, 45, 15] 
     }
     return pd.DataFrame(trains_data), pd.DataFrame(lines_data)
 
@@ -37,7 +37,7 @@ trains_df, lines_df = load_mock_data()
 # 2. UI CONTROLS
 # ==========================================
 st.sidebar.header("🚨 Crisis Injection")
-blocked_line = st.sidebar.selectbox("Block a Line", ["None", "Line_A", "Line_B", "Line_C"])
+blocked_line = st.sidebar.selectbox("Block a Line", ["None"] + lines_df['line_id'].tolist())
 target_train = st.sidebar.selectbox("Select Train to Reroute", trains_df['train_id'].tolist())
 
 if blocked_line != "None":
@@ -48,7 +48,7 @@ if blocked_line != "None":
 # ==========================================
 if st.sidebar.button("Run AI Optimizer"):
     train = trains_df[trains_df['train_id'] == target_train].iloc[0]
-    st.subheader(f"🚂 Optimizing Route for {train['train_id']}")
+    st.subheader(f"🚂 Optimizing Route for {train['train_id']} ({train['train_type']})")
     
     col1, col2 = st.columns(2)
     
@@ -60,53 +60,49 @@ if st.sidebar.button("Run AI Optimizer"):
         for index, line in available_lines.iterrows():
             rejected = False
             if train['weight_tons'] > line['max_weight_tons']:
-                st.error(f"❌ **{line['line_id']} Rejected:** Train weight ({train['weight_tons']}t) > Capacity ({line['max_weight_tons']}t)")
+                st.error(f"❌ **{line['line_id']} Rejected:** Axle load limit exceeded. Train ({train['weight_tons']}t) > Track Capacity ({line['max_weight_tons']}t)")
                 rejected = True
             elif train['needs_electricity'] and not line['is_electrified']:
-                st.error(f"❌ **{line['line_id']} Rejected:** Train needs electricity. Line lacks overhead wires.")
+                st.error(f"❌ **{line['line_id']} Rejected:** Locomotive requires OHE. Line is non-electrified.")
                 rejected = True
             elif line['current_traffic_count'] >= line['max_capacity']:
-                st.error(f"❌ **{line['line_id']} Rejected:** Traffic at maximum capacity.")
+                st.error(f"❌ **{line['line_id']} Rejected:** Section traffic at maximum capacity.")
                 rejected = True
                 
             if not rejected:
-                st.success(f"✅ **{line['line_id']} Validated:** Passes all physical constraints.")
+                st.success(f"✅ **{line['line_id']} Validated:** Passes IR physical and traction constraints.")
                 valid_routes.append(line)
 
     with col2:
-        st.markdown("### 2. Financial Maximization")
+        st.markdown("### 2. IR Financial Maximization")
         if not valid_routes:
-            st.error("🛑 CRITICAL: No valid routes available. Emergency halt required.")
+            st.error("🛑 CRITICAL: No valid routes available. Trigger emergency halt.")
         else:
             best_route = None
             max_net_profit = -float('inf')
             
             for line in valid_routes:
-                delay_penalty = line['estimated_delay_min'] * train['penalty_per_min_usd']
-                opportunity_cost = line['current_traffic_count'] * 200 
-                total_costs = line['base_ops_cost_usd'] + delay_penalty + opportunity_cost
-                net_profit = train['revenue_usd'] - total_costs
+                # Indian Railways Cost Formulation
+                gtkm_cost = train['weight_tons'] * line['distance_km'] * 0.90
+                delay_penalty = line['estimated_delay_min'] * train['penalty_per_min_inr']
+                opportunity_cost = line['current_traffic_count'] * 15000 
+                
+                total_costs = gtkm_cost + delay_penalty + opportunity_cost
+                net_profit = train['revenue_inr'] - total_costs
                 
                 with st.expander(f"Calculate Profit: {line['line_id']}"):
-                    st.write(f"**Revenue:** +${train['revenue_usd']}")
-                    st.write(f"**Base Operations Cost:** -${line['base_ops_cost_usd']}")
-                    st.write(f"**Delay Penalty ({line['estimated_delay_min']}m):** -${delay_penalty}")
-                    st.write(f"**Opportunity Cost:** -${opportunity_cost}")
-                    st.markdown(f"#### Net Profit: ${net_profit}")
+                    st.write(f"**Revenue:** +₹{train['revenue_inr']:,.2f}")
+                    st.write(f"**GTKM Operating Cost (₹0.90/ton-km):** -₹{gtkm_cost:,.2f}")
+                    st.write(f"**Delay Penalty ({line['estimated_delay_min']}m):** -₹{delay_penalty:,.2f}")
+                    st.write(f"**Opportunity Cost:** -₹{opportunity_cost:,.2f}")
+                    st.markdown(f"#### Net Profit: ₹{net_profit:,.2f}")
                 
                 if net_profit > max_net_profit:
                     max_net_profit = net_profit
                     best_route = line['line_id']
 
-            st.success(f"🏆 **AI DECISION:** Reroute to **{best_route}** to maximize profit at **${max_net_profit}**")
-
+            st.success(f"🏆 **AI DECISION:** Reroute to **{best_route}** to maximize net profit at **₹{max_net_profit:,.2f}**")
+            
 st.markdown("---")
-st.markdown("### Live Database View")
+st.markdown("### Live Indian Railways CTC Database View")
 st.dataframe(lines_df, use_container_width=True)
-
-
-#For runnung the code we need the folling commands
-#source .venv/bin/activate
-#pip install streamlit pandas
-
-#streamlit run xai_financial_router.py
