@@ -530,52 +530,268 @@ with tab_iot:
     st.plotly_chart(fig_wave, width='stretch')
 
 # =========================================================================
-# TAB 4: EXPLAINABLE AI REROUTER (2-STAGE CSPF)
+# TAB 4: EXPLAINABLE AI REROUTER (2-STAGE CSPF & GTKM FINANCIAL ENGINE)
 # =========================================================================
 with tab_xai:
-    st.markdown("### 🧠 Explainable AI: 2-Stage CSPF Financial Rerouting Engine")
-    st.caption("Transparent multi-track conflict resolution combining physical engineering feasibility with commercial cost-benefit optimization.")
+    st.markdown("### 🧠 Explainable AI: Financial Rerouting Engine (Indian Railways GTKM Edition)")
+    st.caption("Transparent Constrained Shortest Path First (CSPF) decision logic tailored to Indian Railways Gross Tonne Kilometre (GTKM) metrics.")
+
+    # 1. Mathematical Objective Formulation HUD
+    st.markdown("""
+    <div class="ctc-panel" style="margin-bottom: 1.25rem; border-left: 4px solid #38bdf8;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+            <span style="font-size: 0.85rem; font-weight: 700; color: #38bdf8; text-transform: uppercase; letter-spacing: 0.05em;">
+                📐 Mathematical Objective Function: Dynamic Net Profit Maximization
+            </span>
+            <span style="font-size: 0.75rem; color: #94a3b8; font-family: monospace;">IR CSPF Stage-2 Model</span>
+        </div>
+        <div style="font-size: 1.15rem; font-weight: 600; color: #f8fafc; margin-bottom: 10px; font-family: monospace;">
+            P<sub>net</sub> = R - [ C<sub>GTKM</sub> + P<sub>delay</sub> + C<sub>opp</sub> ]
+        </div>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px; font-size: 0.82rem; color: #94a3b8;">
+            <div><b style="color: #34d399;">R (Commercial Revenue):</b> Freight tariffs & passenger ticket collection.</div>
+            <div><b style="color: #38bdf8;">C<sub>GTKM</sub> (Operating Cost):</b> Weight (T) × Distance (km) × ₹0.90/T-km.</div>
+            <div><b style="color: #f59e0b;">P<sub>delay</sub> (Punctuality Penalty):</b> Delay (min) × Section SLA Penalty Rate (₹/min).</div>
+            <div><b style="color: #f43f5e;">C<sub>opp</sub> (Opportunity Cost):</b> Active Section Rakes × ₹15,000 Bottleneck Surcharge.</div>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
 
     trains_mock, tracks_mock = get_default_corridor_infrastructure()
 
-    col_x1, col_x2 = st.columns([1, 2])
+    # 2. Dispatcher Controls
+    col_x1, col_x2, col_x3 = st.columns([1.2, 1.2, 1.0])
     with col_x1:
-        st.markdown("#### 🎯 Dispatch Selection")
-        selected_train = st.selectbox("Target Train", trains_mock['train_id'].tolist())
-        selected_block = st.selectbox("Simulate Track Closure", ["None"] + tracks_mock['track_id'].tolist())
+        selected_train = st.selectbox(
+            "Select Train to Reroute",
+            trains_mock['train_id'].tolist(),
+            index=0
+        )
+    with col_x2:
+        selected_block = st.selectbox(
+            "Simulate Track Crisis / Blockage",
+            ["None"] + tracks_mock['track_id'].tolist(),
+            index=1  # Default to Line_A (Main Route) blocked to immediately demonstrate rerouting
+        )
+    with col_x3:
+        with st.popover("⚙️ Cost Model Fine-Tuning"):
+            st.markdown("##### IR Metric Calibration")
+            gtkm_param = st.slider("GTKM Rate (₹/ton-km)", 0.50, 2.00, 0.90, step=0.05)
+            opp_param = st.slider("Opportunity Penalty per Train (₹)", 5000, 30000, 15000, step=2500)
 
+    # Fetch Train Specs safely
+    target_train_row = trains_mock[trains_mock['train_id'] == selected_train].iloc[0]
+    train_wt = float(target_train_row.get('weight_tons', 1000))
+    train_elec = bool(target_train_row.get('needs_electricity', True))
+    train_rev = float(target_train_row.get('revenue_inr', target_train_row.get('gross_revenue_inr', 1000000)))
+    train_pen = float(target_train_row.get('penalty_per_min_inr', 1000))
+    train_type = str(target_train_row.get('train_type', target_train_row.get('train_name', 'Passenger / Freight')))
+    train_loco = str(target_train_row.get('loco_type', '25kV AC Electric' if train_elec else 'Diesel Traction'))
+
+    # Quick train metadata banner
+    st.markdown(f"""
+    <div style="background: rgba(15, 23, 42, 0.6); border: 1px solid rgba(255,255,255,0.08); border-radius: 8px; padding: 10px 16px; margin-bottom: 1rem; display: flex; flex-wrap: wrap; gap: 16px; align-items: center; font-size: 0.83rem;">
+        <span style="color: #94a3b8;">Selected Rolling Stock: <b style="color: #f1f5f9;">{selected_train}</b> ({train_type})</span>
+        <span style="color: #94a3b8;">Gross Weight: <b style="color: #38bdf8;">{train_wt:,} Tonnes</b></span>
+        <span style="color: #94a3b8;">Traction: <b style="color: {'#34d399' if train_elec else '#fbbf24'};">{'25kV AC Electric' if train_elec else 'Diesel Traction'}</b> ({train_loco})</span>
+        <span style="color: #94a3b8;">Gross Revenue: <b style="color: #34d399;">₹{train_rev:,.0f}</b></span>
+        <span style="color: #94a3b8;">SLA Penalty: <b style="color: #f43f5e;">₹{train_pen:,.0f}/min</b></span>
+    </div>
+    """, unsafe_allow_html=True)
+
+    # Evaluate Decision
     xai_res = evaluate_rerouting_decision(
         target_train_id=selected_train,
         blocked_track_id=selected_block,
         trains_df=trains_mock,
-        tracks_df=tracks_mock
+        tracks_df=tracks_mock,
+        gtkm_rate=gtkm_param,
+        opp_cost_rate=opp_param
     )
 
-    with col_x2:
-        st.markdown("#### 📋 AI Dispatcher Audit Recommendation")
-        if xai_res['best_track']:
-            st.success(f"🏆 **AI RECOMMENDATION:** Dispatch **{selected_train}** via **{xai_res['best_track']}** (Optimal Net Margin: ₹ {xai_res['max_net_margin']:,})")
-        else:
-            st.error("🛑 **CRITICAL DISPATCH ALERT:** No physically viable track available. Hold train at outer home signal.")
+    # 3. Decision Recommendation Banner
+    if xai_res['best_track']:
+        best_eval = [e for e in xai_res['financial_evaluations'] if e['track_id'] == xai_res['best_track']][0]
+        st.markdown(f"""
+        <div class="ctc-panel" style="border: 1px solid #10b981; background: linear-gradient(135deg, rgba(16, 185, 129, 0.12) 0%, rgba(10, 16, 30, 0.85) 100%); margin-bottom: 1.25rem;">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <div>
+                    <span style="background: #10b981; color: #022c22; font-weight: 800; font-size: 0.72rem; padding: 3px 8px; border-radius: 4px; text-transform: uppercase;">
+                        AI OPTIMIZED ROUTING DECISION
+                    </span>
+                    <h3 style="margin: 8px 0 4px 0; color: #f8fafc; font-size: 1.25rem;">
+                        🏆 Dispatch <span style="color: #38bdf8;">{selected_train}</span> via <span style="color: #34d399;">{xai_res['best_track']}</span>
+                    </h3>
+                    <p style="margin: 0; color: #94a3b8; font-size: 0.84rem;">
+                        Maximizes net operating margin while fully satisfying physical axle load limits, OHE electrification, and block headway safety margins.
+                    </p>
+                </div>
+                <div style="text-align: right;">
+                    <div style="font-size: 0.75rem; color: #94a3b8; text-transform: uppercase;">Optimal Net Margin</div>
+                    <div style="font-size: 1.6rem; font-weight: 800; color: #34d399; font-family: 'JetBrains Mono', monospace;">
+                        ₹{xai_res['max_net_margin']:,.2f}
+                    </div>
+                    <div style="font-size: 0.75rem; color: #a7f3d0;">
+                        Net Margin: {best_eval['margin_pct']:.1f}% | Total Expenses: ₹{best_eval['total_expense']:,.2f}
+                    </div>
+                </div>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+    else:
+        st.markdown(f"""
+        <div class="ctc-panel" style="border: 1px solid #f43f5e; background: linear-gradient(135deg, rgba(244, 63, 94, 0.15) 0%, rgba(10, 16, 30, 0.85) 100%); margin-bottom: 1.25rem;">
+            <span style="background: #f43f5e; color: #ffe4e6; font-weight: 800; font-size: 0.72rem; padding: 3px 8px; border-radius: 4px; text-transform: uppercase;">
+                CRITICAL DISPATCH ALERT
+            </span>
+            <h3 style="margin: 8px 0 4px 0; color: #f8fafc; font-size: 1.25rem;">
+                🛑 No Feasible Physical Alternate Route Available
+            </h3>
+            <p style="margin: 0; color: #fca5a5; font-size: 0.84rem;">
+                All alternate routes failed physical constraints (axle load exceeding capacity or lack of 25kV catenary). Safe protocol: Hold train at Outer Home Signal.
+            </p>
+        </div>
+        """, unsafe_allow_html=True)
 
-    st.markdown("---")
-    col_x_log1, col_x_log2 = st.columns(2)
+    # 4. Two-Column Deep-Dive Execution
+    col_x_log1, col_x_log2 = st.columns([1, 1])
 
     with col_x_log1:
-        st.markdown("#### 1. Physical Feasibility Filtering")
+        st.markdown("#### 1. Constraint Pruning (Physical & Traction Audits)")
+        st.caption("Validates axle load limits, OHE catenary requirements, block headway saturation, and physical track closures.")
+
         for log in xai_res['validation_log']:
             if log['passed']:
-                st.success(f"✅ **{log['track_id']}**: {log['reason']}")
+                st.markdown(f"""
+                <div style="background: rgba(16, 185, 129, 0.08); border-left: 3px solid #10b981; padding: 10px 14px; border-radius: 6px; margin-bottom: 8px;">
+                    <div style="color: #34d399; font-weight: 700; font-size: 0.88rem;">✅ {log['track_id']} Validated</div>
+                    <div style="color: #94a3b8; font-size: 0.82rem; margin-top: 2px;">{log['reason']}</div>
+                </div>
+                """, unsafe_allow_html=True)
             else:
-                st.error(f"❌ **{log['track_id']}**: {log['reason']}")
+                st.markdown(f"""
+                <div style="background: rgba(244, 63, 94, 0.08); border-left: 3px solid #f43f5e; padding: 10px 14px; border-radius: 6px; margin-bottom: 8px;">
+                    <div style="color: #fb7185; font-weight: 700; font-size: 0.88rem;">❌ {log['track_id']} Rejected</div>
+                    <div style="color: #fda4af; font-size: 0.82rem; margin-top: 2px;">{log['reason']}</div>
+                </div>
+                """, unsafe_allow_html=True)
 
     with col_x_log2:
-        st.markdown("#### 2. Commercial Optimization Breakdown")
-        if xai_res['financial_evaluations']:
-            fin_df = pd.DataFrame(xai_res['financial_evaluations'])
-            st.dataframe(fin_df[['track_id', 'gross_revenue', 'base_energy_cost', 'delay_penalty_cost', 'net_margin']], width='stretch')
+        st.markdown("#### 2. IR Financial Maximization & Cost Arithmetic")
+        st.caption("Transparent mathematical accounting for every candidate route passing physical validation.")
+
+        if not xai_res['financial_evaluations']:
+            st.warning("⚠️ No candidate routes passed physical validation to reach the commercial evaluation stage.")
         else:
-            st.info("No candidates reached financial evaluation stage.")
+            for eval_data in xai_res['financial_evaluations']:
+                is_winner = (eval_data['track_id'] == xai_res['best_track'])
+                expander_label = f"{'🏆 [AI CHOICE] ' if is_winner else ''}Calculate Profit: {eval_data['track_id']} → Net Profit: ₹{eval_data['net_margin']:,.2f}"
+                
+                with st.expander(expander_label, expanded=is_winner):
+                    st.markdown(f"""
+                    <div style="font-family: 'JetBrains Mono', monospace; font-size: 0.84rem; line-height: 1.6; background: rgba(10, 16, 30, 0.7); padding: 12px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.06);">
+                        <div style="display: flex; justify-content: space-between; color: #34d399;">
+                            <span><b>[+] Gross Commercial Revenue:</b></span>
+                            <span><b>+₹{eval_data['gross_revenue']:,.2f}</b></span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; color: #38bdf8; margin-top: 4px;">
+                            <span><b>[-] GTKM Cost ({eval_data['weight_tons']:,.0f}t × {eval_data['distance_km']}km × ₹{eval_data['gtkm_rate']:.2f}):</b></span>
+                            <span>-₹{eval_data['gtkm_cost']:,.2f}</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; color: #fbbf24; margin-top: 4px;">
+                            <span><b>[-] Punctuality Delay ({eval_data['delay_mins']:.0f}m × ₹{eval_data['penalty_per_min']:,.0f}/m):</b></span>
+                            <span>-₹{eval_data['delay_penalty_cost']:,.2f}</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; color: #f43f5e; margin-top: 4px;">
+                            <span><b>[-] Opportunity Cost ({eval_data['current_traffic']} trains × ₹{eval_data['opp_cost_rate']:,.0f}):</b></span>
+                            <span>-₹{eval_data['opportunity_cost']:,.2f}</span>
+                        </div>
+                        <hr style="border: 0; border-top: 1px dashed rgba(255,255,255,0.15); margin: 8px 0;">
+                        <div style="display: flex; justify-content: space-between; color: #94a3b8;">
+                            <span><b>[=] Total Operational Expenses:</b></span>
+                            <span>-₹{eval_data['total_expense']:,.2f}</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; font-size: 1.05rem; font-weight: 800; color: {'#34d399' if eval_data['net_margin'] > 0 else '#f43f5e'}; margin-top: 6px;">
+                            <span><b>[★] Net Retained Margin (P<sub>net</sub>):</b></span>
+                            <span>₹{eval_data['net_margin']:,.2f}</span>
+                        </div>
+                    </div>
+                    """, unsafe_allow_html=True)
+                    st.caption(f"📊 Margin Ratio: **{eval_data['margin_pct']:.1f}%** | Section Traversal Length: **{eval_data['distance_km']} km** | Active Headway: **{eval_data['current_traffic']} rakes**")
+
+    # 5. Visual Comparative Cost Breakdown Chart
+    if xai_res['financial_evaluations']:
+        st.markdown("---")
+        st.markdown("#### 📊 Comparative Route Financial & Expense Breakdown")
+        fin_df = pd.DataFrame(xai_res['financial_evaluations'])
+        
+        fig_xai = go.Figure()
+        fig_xai.add_trace(go.Bar(
+            name="Net Profit (Retained)",
+            x=fin_df['track_id'],
+            y=fin_df['net_margin'],
+            marker_color="#10b981",
+            text=[f"₹{v/1e5:.2f}L" for v in fin_df['net_margin']],
+            textposition='auto'
+        ))
+        fig_xai.add_trace(go.Bar(
+            name="GTKM Operating Cost",
+            x=fin_df['track_id'],
+            y=fin_df['gtkm_cost'],
+            marker_color="#38bdf8",
+            text=[f"₹{v/1e5:.2f}L" for v in fin_df['gtkm_cost']],
+            textposition='auto'
+        ))
+        fig_xai.add_trace(go.Bar(
+            name="Delay Penalty Cost",
+            x=fin_df['track_id'],
+            y=fin_df['delay_penalty_cost'],
+            marker_color="#f59e0b",
+            text=[f"₹{v/1e5:.2f}L" for v in fin_df['delay_penalty_cost']],
+            textposition='auto'
+        ))
+        fig_xai.add_trace(go.Bar(
+            name="Headway Opportunity Cost",
+            x=fin_df['track_id'],
+            y=fin_df['opportunity_cost'],
+            marker_color="#f43f5e",
+            text=[f"₹{v/1e5:.2f}L" for v in fin_df['opportunity_cost']],
+            textposition='auto'
+        ))
+
+        fig_xai.update_layout(
+            barmode='group',
+            plot_bgcolor="#080d17",
+            paper_bgcolor="#080d17",
+            xaxis=dict(gridcolor="rgba(255, 255, 255, 0.05)", color="#94a3b8"),
+            yaxis=dict(title="Amount (₹ INR)", gridcolor="rgba(255, 255, 255, 0.05)", color="#94a3b8"),
+            height=320,
+            legend=dict(orientation="h", y=1.15, x=0),
+            margin=dict(l=20, r=20, t=30, b=20)
+        )
+        st.plotly_chart(fig_xai, width='stretch')
+
+    # 6. Live Indian Railways CTC Corridor Infrastructure Database
+    st.markdown("---")
+    st.markdown("#### 📋 Live Indian Railways CTC Corridor Infrastructure Database")
+    
+    display_tracks = xai_res['tracks_table'].copy()
+    col_mapping = {
+        'track_id': 'Route ID',
+        'status': 'Status',
+        'distance_km': 'Distance (km)',
+        'max_weight_tons': 'Max Axle Capacity (Tons)',
+        'is_electrified': '25kV Electrified (OHE)',
+        'current_traffic_count': 'Active Headway (Rakes)',
+        'max_capacity': 'Max Block Capacity',
+        'estimated_delay_min': 'Section Delay (Mins)'
+    }
+    cols_to_show = [c for c in col_mapping.keys() if c in display_tracks.columns]
+    display_df = display_tracks[cols_to_show].rename(columns=col_mapping)
+    display_df['25kV Electrified (OHE)'] = display_df['25kV Electrified (OHE)'].apply(lambda x: "⚡ Yes (25kV AC)" if x else "❌ No (Diesel Only)")
+    
+    st.dataframe(display_df, width='stretch', hide_index=True)
+
 
 # =========================================================================
 # TAB 5: OFFICIAL DISPATCH AUTHORITY ORDER
