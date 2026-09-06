@@ -365,15 +365,24 @@ with tab_trains:
 # TAB 1.5: TRACK SIMULATION (FACTORIO-STYLE)
 # =========================================================================
 with tab_sim:
-    st.markdown("### Interactive Track Simulation")
-    st.caption("Real-time block section simulation with disruption injection and layout editing.")
+    st.markdown("### Digital Twin Playback Engine")
+    st.caption("Real-time simulation synchronized with the CP-SAT shadow-block solver timetable.")
     
     sim_html_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "assets", "simulation.html")
     if os.path.exists(sim_html_path):
         with open(sim_html_path, "r", encoding="utf-8") as f:
             sim_html_content = f.read()
+            
+        import json
+        sim_data = {
+            "trajectories": trajectories,
+            "solver_start": solver_solution.get("start_time_min", 0),
+            "solver_end": solver_solution.get("end_time_min", 0)
+        }
+        sim_html_content = sim_html_content.replace("__INJECTED_DATA__", json.dumps(sim_data))
+        
         import streamlit.components.v1 as components
-        components.html(sim_html_content, height=700)
+        components.html(sim_html_content, height=750)
     else:
         st.error("Simulation engine (simulation.html) not found in assets folder.")
 

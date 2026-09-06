@@ -5,29 +5,39 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Track Simulation Pro</title>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@700&display=swap');
         
         body, html { margin: 0; padding: 0; width: 100%; height: 100%; background-color: #0f172a; color: #e2e8f0; font-family: 'Inter', sans-serif; overflow: hidden; display: flex; flex-direction: column; user-select: none; }
         
-        #ui-bar { background-color: #1e293b; padding: 12px 20px; display: flex; gap: 20px; align-items: center; border-bottom: 1px solid #334155; z-index: 10; flex-wrap: wrap; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.3); }
+        #ui-bar { background-color: #1e293b; padding: 12px 20px; display: flex; gap: 15px; align-items: center; border-bottom: 1px solid #334155; z-index: 10; flex-wrap: wrap; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.3); }
         .btn-group { display: flex; gap: 4px; background: #0f172a; padding: 5px; border-radius: 8px; border: 1px solid #334155; align-items: center; }
         
         button { background-color: transparent; color: #94a3b8; border: none; padding: 8px 14px; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: 600; transition: all 0.2s; display: flex; align-items: center; gap: 6px; }
         button:hover { background-color: #334155; color: #f8fafc; }
         button.active { background-color: #3b82f6; color: white; box-shadow: 0 0 10px rgba(59,130,246,0.5); }
-        
         button.danger { color: #f87171; }
         button.danger:hover { background-color: #7f1d1d; color: white; }
         button.danger.active { background-color: #ef4444; color: white; box-shadow: 0 0 10px rgba(239,68,68,0.5); }
         
         .separator { width: 1px; height: 28px; background: #334155; margin: 0 5px; }
         
+        #clock-display { font-family: 'JetBrains Mono', monospace; font-size: 20px; color: #f8fafc; font-weight: 700; background: #0f172a; padding: 6px 12px; border-radius: 8px; border: 1px solid #38bdf8; box-shadow: 0 0 10px rgba(56, 189, 248, 0.2); letter-spacing: 1px; }
+        
         #canvas-container { flex-grow: 1; position: relative; cursor: grab; background: #0f172a; }
         #canvas-container.panning { cursor: grabbing !important; }
         #canvas-container.tool-active { cursor: crosshair; }
         canvas { display: block; width: 100%; height: 100%; }
         
-        #info-panel { position: absolute; bottom: 25px; left: 25px; background: rgba(15, 23, 42, 0.9); backdrop-filter: blur(12px); border: 1px solid #334155; padding: 20px; border-radius: 12px; min-width: 280px; display: none; box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5); pointer-events: none; border-top: 4px solid #38bdf8; }
+        #timeline-bar { position: absolute; bottom: 0; left: 0; width: 100%; height: 80px; background: rgba(15, 23, 42, 0.9); backdrop-filter: blur(12px); border-top: 1px solid #334155; display: flex; flex-direction: column; justify-content: center; padding: 0 30px; box-sizing: border-box; z-index: 5; }
+        .slider-container { position: relative; width: 100%; height: 30px; display: flex; align-items: center; }
+        #shadow-block-highlight { position: absolute; height: 8px; background: repeating-linear-gradient(45deg, #eab308, #eab308 10px, #ca8a04 10px, #ca8a04 20px); border-radius: 4px; pointer-events: none; z-index: 1; opacity: 0.8; top: 11px; box-shadow: 0 0 10px rgba(234, 179, 8, 0.5); }
+        input[type=range] { -webkit-appearance: none; width: 100%; background: transparent; z-index: 2; position: relative; }
+        input[type=range]:focus { outline: none; }
+        input[type=range]::-webkit-slider-runnable-track { width: 100%; height: 8px; cursor: pointer; background: #334155; border-radius: 4px; border: 1px solid #1e293b; }
+        input[type=range]::-webkit-slider-thumb { border: 2px solid #38bdf8; height: 20px; width: 20px; border-radius: 50%; background: #0f172a; cursor: pointer; -webkit-appearance: none; margin-top: -7px; box-shadow: 0 0 10px rgba(56, 189, 248, 0.8); }
+        .timeline-labels { display: flex; justify-content: space-between; color: #94a3b8; font-size: 12px; font-weight: 600; margin-top: 8px; }
+        
+        #info-panel { position: absolute; top: 25px; left: 25px; background: rgba(15, 23, 42, 0.9); backdrop-filter: blur(12px); border: 1px solid #334155; padding: 20px; border-radius: 12px; min-width: 280px; display: none; box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5); pointer-events: none; border-top: 4px solid #38bdf8; z-index: 4; }
         #info-panel h3 { margin: 0 0 12px 0; font-size: 18px; color: #f8fafc; display: flex; justify-content: space-between; align-items: center; }
         #info-panel p { margin: 8px 0; font-size: 14px; color: #cbd5e1; display: flex; justify-content: space-between; }
         .highlight { color: #38bdf8; font-weight: 600; }
@@ -35,27 +45,32 @@
         .status-moving { background: rgba(34, 197, 94, 0.2); color: #4ade80; border: 1px solid rgba(34, 197, 94, 0.3); }
         .status-stopped { background: rgba(239, 68, 68, 0.2); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.3); }
         
+        .maintenance-warning { position: absolute; top: 25px; right: 25px; background: rgba(234, 179, 8, 0.2); border: 1px solid rgba(234, 179, 8, 0.5); color: #fde047; padding: 12px 20px; border-radius: 8px; font-weight: 600; font-size: 14px; display: none; align-items: center; gap: 10px; box-shadow: 0 0 20px rgba(234, 179, 8, 0.2); pointer-events: none; z-index: 4; }
+        .maintenance-warning.active { display: flex; animation: pulse 2s infinite; }
+        @keyframes pulse { 0% { opacity: 0.8; } 50% { opacity: 1; box-shadow: 0 0 30px rgba(234, 179, 8, 0.4); } 100% { opacity: 0.8; } }
+        
         #toast { position: absolute; top: 20px; left: 50%; transform: translateX(-50%); background: rgba(59, 130, 246, 0.9); color: white; padding: 10px 20px; border-radius: 30px; font-weight: 600; font-size: 14px; opacity: 0; transition: opacity 0.3s; pointer-events: none; z-index: 100; box-shadow: 0 4px 12px rgba(0,0,0,0.3); }
     </style>
 </head>
 <body>
 
     <div id="ui-bar">
+        <div id="clock-display">00:00</div>
+        <div class="separator"></div>
         <div class="btn-group">
             <button id="btn-play" class="active">▶ Play</button>
             <button id="btn-pause">⏸ Pause</button>
         </div>
         <div class="btn-group">
             <button class="speed-btn active" data-speed="1">1x</button>
-            <button class="speed-btn" data-speed="2">2x</button>
             <button class="speed-btn" data-speed="5">5x</button>
-            <button class="speed-btn" data-speed="10">10x</button>
+            <button class="speed-btn" data-speed="20">20x</button>
+            <button class="speed-btn" data-speed="60">60x</button>
         </div>
         <div class="separator"></div>
         <div class="btn-group">
             <button id="tool-select" class="tool-btn active" data-tool="select">👆 Select</button>
             <button id="tool-track" class="tool-btn" data-tool="track">🛤️ Track</button>
-            <button id="tool-train" class="tool-btn" data-tool="train">🚆 Train</button>
             <button id="tool-station" class="tool-btn" data-tool="station">🏢 Station</button>
             <button id="tool-signal" class="tool-btn" data-tool="signal">🚦 Signal</button>
             <button id="tool-delete" class="tool-btn" data-tool="delete">🗑️ Delete</button>
@@ -66,11 +81,16 @@
             <button id="disrupt-rail" class="danger tool-btn" data-tool="break_rail">⚠️ Break Rail</button>
             <button id="btn-clear-faults" style="color: #94a3b8;">✨ Repair All</button>
         </div>
+        <div class="separator"></div>
+        <button id="btn-fullscreen" style="background: #0f172a; border: 1px solid #334155;">⛶ Fullscreen</button>
     </div>
 
     <div id="canvas-container">
         <canvas id="sim-canvas"></canvas>
         <div id="toast">Message</div>
+        
+        <div id="maintenance-alert" class="maintenance-warning">⚠️ SHADOW-BLOCK ACTIVE (Tracks Locked)</div>
+        
         <div id="info-panel">
             <h3 id="info-title"><span>Title</span> <span id="info-badge" class="status-badge status-moving">MOVING</span></h3>
             <div style="height: 1px; background: #334155; margin: 10px 0;"></div>
@@ -78,22 +98,38 @@
             <p><span>Current Speed</span> <span id="info-speed" style="color: white; font-variant-numeric: tabular-nums;">0 km/h</span></p>
             <p><span>Next Signal</span> <span id="info-signal" style="font-weight: bold;">--</span></p>
         </div>
+        
+        <div id="timeline-bar">
+            <div class="slider-container">
+                <div id="shadow-block-highlight"></div>
+                <input type="range" id="time-scrubber" min="0" max="1440" value="0">
+            </div>
+            <div class="timeline-labels">
+                <span>00:00</span><span>06:00</span><span>12:00</span><span>18:00</span><span>24:00</span>
+            </div>
+        </div>
     </div>
 
     <script>
+        // Inject Python CP-SAT / Timetable Data
+        let RAW_DATA = `__INJECTED_DATA__`;
+        let SERVER_DATA = { trajectories: [], solver_start: 0, solver_end: 0 };
+        try { if(!RAW_DATA.includes("__INJECTED")) SERVER_DATA = JSON.parse(RAW_DATA); } catch(e) { console.error(e); }
+
         const CONFIG = {
-            gridSize: 40,
+            gridSize: 30,
             simSpeed: 1,
             isPaused: false,
             colors: {
                 bgDark: '#0f172a', bgLight: '#1e293b',
-                track: '#94a3b8', trackGlow: '#38bdf8', tie: '#334155',
+                track: '#94a3b8', trackGlow: '#38bdf8', tie: '#334155', trackMaint: '#ca8a04',
                 trainPre: '#ef4444', trainExp: '#f59e0b', trainFrt: '#3b82f6',
-                sigG: '#22c55e', sigY: '#eab308', sigR: '#ef4444', sigOff: '#64748b'
+                sigG: '#22c55e', sigY: '#eab308', sigR: '#ef4444'
             }
         };
 
         const state = {
+            time: 0,
             camera: { x: 0, y: 0, zoom: 1 },
             tool: 'select',
             hoveredGrid: { x: 0, y: 0 },
@@ -101,87 +137,61 @@
             selectedTrain: null,
             weather: false,
             particles: [],
+            isMaintenance: false,
             nodes: new Map(),
             edges: new Map(),
             stations: [],
-            signals: [], // { id, edgeId, pos, dir (1 or -1) }
+            signals: [],
             trains: [],
-            blocks: [], // Dynamically calculated track blocks for collision avoidance
+            blocks: [],
         };
 
         const canvas = document.getElementById('sim-canvas');
         const ctx = canvas.getContext('2d');
         const toastEl = document.getElementById('toast');
+        const scrubber = document.getElementById('time-scrubber');
+        const clockDisplay = document.getElementById('clock-display');
         
-        function showToast(msg) {
-            toastEl.innerText = msg;
-            toastEl.style.opacity = 1;
-            setTimeout(() => toastEl.style.opacity = 0, 2000);
+        // Setup Shadow Block Highlight
+        const sStart = SERVER_DATA.solver_start || 0;
+        const sEnd = SERVER_DATA.solver_end || 0;
+        if(sEnd > sStart) {
+            const hL = document.getElementById('shadow-block-highlight');
+            hL.style.left = (sStart / 1440 * 100) + '%';
+            hL.style.width = ((sEnd - sStart) / 1440 * 100) + '%';
         }
 
-        // --- RESIZE & MATH LOGIC ---
-        function resize() {
-            canvas.width = canvas.parentElement.clientWidth;
-            canvas.height = canvas.parentElement.clientHeight;
-        }
+        function showToast(msg) { toastEl.innerText = msg; toastEl.style.opacity = 1; setTimeout(() => toastEl.style.opacity = 0, 2000); }
+        function formatTime(mins) { let h = Math.floor(mins / 60); let m = Math.floor(mins % 60); return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`; }
+
+        // --- MATH / GRAPH ---
+        function resize() { canvas.width = canvas.parentElement.clientWidth; canvas.height = canvas.parentElement.clientHeight; }
         window.addEventListener('resize', resize); resize();
 
-        function getMousePos(evt) {
-            const rect = canvas.getBoundingClientRect();
-            return { x: evt.clientX - rect.left, y: evt.clientY - rect.top };
-        }
-        
-        function screenToWorld(x, y) {
-            return {
-                x: (x - state.camera.x) / state.camera.zoom,
-                y: (y - state.camera.y) / state.camera.zoom
-            };
-        }
-        
-        function worldToGrid(x, y) {
-            return { x: Math.round(x / CONFIG.gridSize), y: Math.round(y / CONFIG.gridSize) };
-        }
+        function getMousePos(evt) { const rect = canvas.getBoundingClientRect(); return { x: evt.clientX - rect.left, y: evt.clientY - rect.top }; }
+        function screenToWorld(x, y) { return { x: (x - state.camera.x) / state.camera.zoom, y: (y - state.camera.y) / state.camera.zoom }; }
+        function worldToGrid(x, y) { return { x: Math.round(x / CONFIG.gridSize), y: Math.round(y / CONFIG.gridSize) }; }
 
-        // --- GRAPH ENGINE ---
         function getId(x, y) { return `${x},${y}`; }
-        
-        function addNode(x, y) {
-            let id = getId(x, y);
-            if (!state.nodes.has(id)) state.nodes.set(id, { id, x, y, edges: [] });
-            return id;
-        }
-        
+        function addNode(x, y) { let id = getId(x, y); if (!state.nodes.has(id)) state.nodes.set(id, { id, x, y, edges: [] }); return id; }
         function addEdge(n1_id, n2_id) {
             if(n1_id === n2_id) return null;
-            let id = `${n1_id}_${n2_id}`;
-            let idRev = `${n2_id}_${n1_id}`;
+            let id = `${n1_id}_${n2_id}`, idRev = `${n2_id}_${n1_id}`;
             if (state.edges.has(id) || state.edges.has(idRev)) return null;
-            
-            let n1 = state.nodes.get(n1_id);
-            let n2 = state.nodes.get(n2_id);
+            let n1 = state.nodes.get(n1_id), n2 = state.nodes.get(n2_id);
             let length = Math.sqrt(Math.pow(n2.x - n1.x, 2) + Math.pow(n2.y - n1.y, 2));
-            
             let edge = { id, n1: n1_id, n2: n2_id, length, broken: false };
-            state.edges.set(id, edge);
-            n1.edges.push(id);
-            n2.edges.push(id);
-            
-            recalculateBlocks();
-            return edge;
+            state.edges.set(id, edge); n1.edges.push(id); n2.edges.push(id);
+            recalculateBlocks(); return edge;
         }
-        
         function removeEdge(id) {
             if(!state.edges.has(id)) return;
             let edge = state.edges.get(id);
             state.nodes.get(edge.n1).edges = state.nodes.get(edge.n1).edges.filter(e => e !== id);
             state.nodes.get(edge.n2).edges = state.nodes.get(edge.n2).edges.filter(e => e !== id);
             state.signals = state.signals.filter(s => s.edgeId !== id);
-            
-            // Remove trains on this edge
             state.trains = state.trains.filter(t => t.path[t.pathIdx] !== id);
-            
-            state.edges.delete(id);
-            recalculateBlocks();
+            state.edges.delete(id); recalculateBlocks();
         }
 
         function distToSegment(p, v, w) {
@@ -191,517 +201,299 @@
             t = Math.max(0, Math.min(1, t));
             return Math.sqrt(Math.pow(p.x - (v.x + t * (w.x - v.x)), 2) + Math.pow(p.y - (v.y + t * (w.y - v.y)), 2));
         }
-        
         function getEdgeAt(worldX, worldY) {
-            const gx = worldX / CONFIG.gridSize;
-            const gy = worldY / CONFIG.gridSize;
-            let bestEdge = null;
-            let minDist = Infinity;
-            
+            const gx = worldX / CONFIG.gridSize, gy = worldY / CONFIG.gridSize;
+            let best = null, minDist = Infinity;
             for (let [id, edge] of state.edges) {
-                let n1 = state.nodes.get(edge.n1);
-                let n2 = state.nodes.get(edge.n2);
+                let n1 = state.nodes.get(edge.n1), n2 = state.nodes.get(edge.n2);
                 let d = distToSegment({x:gx, y:gy}, n1, n2);
-                if (d < 0.4 && d < minDist) {
-                    minDist = d;
-                    bestEdge = edge;
-                }
+                if (d < 0.4 && d < minDist) { minDist = d; best = edge; }
             }
-            return bestEdge;
+            return best;
         }
 
-        // --- FACTORIO BLOCK LOGIC ---
-        // A block is a collection of contiguous edges that are not separated by a signal.
-        // If a train occupies any edge in a block, the entire block is occupied.
         function recalculateBlocks() {
-            state.blocks = [];
-            let visitedEdges = new Set();
-            
-            // Map signals by edge for fast lookup
+            state.blocks = []; let visitedEdges = new Set();
             let edgeSignals = new Map();
-            for(let s of state.signals) {
-                if(!edgeSignals.has(s.edgeId)) edgeSignals.set(s.edgeId, []);
-                edgeSignals.get(s.edgeId).push(s);
-            }
+            for(let s of state.signals) { if(!edgeSignals.has(s.edgeId)) edgeSignals.set(s.edgeId, []); edgeSignals.get(s.edgeId).push(s); }
 
             for (let [edgeId, edge] of state.edges) {
                 if (visitedEdges.has(edgeId)) continue;
-                
                 let currentBlock = { id: state.blocks.length, edges: new Set(), occupiedBy: null };
-                
-                // BFS to find all connected edges without crossing a signal boundary
                 let queue = [edgeId];
                 while(queue.length > 0) {
                     let currId = queue.shift();
                     if(visitedEdges.has(currId)) continue;
-                    
-                    visitedEdges.add(currId);
-                    currentBlock.edges.add(currId);
-                    
+                    visitedEdges.add(currId); currentBlock.edges.add(currId);
                     let cEdge = state.edges.get(currId);
-                    
-                    // If this edge itself has a signal, it acts as a boundary. 
-                    // Technically in factorio signals are AT nodes or ON edges. 
-                    // We placed them ON edges. So an edge with a signal is cut in half logically.
-                    // For simplicity, we say a signal on an edge protects the NEXT edge in the sequence.
-                    // Let's do node-based traversal. We can cross a node IF there is no signal pointing towards the next edge.
                     
                     for (let node of [state.nodes.get(cEdge.n1), state.nodes.get(cEdge.n2)]) {
                         for (let nextEdgeId of node.edges) {
-                            if (nextEdgeId === currId) continue;
-                            if (visitedEdges.has(nextEdgeId)) continue;
-                            
-                            // Check if there is a signal on the current edge or next edge that separates them
-                            let hasSignal = false;
-                            if(edgeSignals.has(currId) || edgeSignals.has(nextEdgeId)) {
-                                // Simplified block boundary: any signal on the connected edges breaks the block.
-                                hasSignal = true;
-                            }
-                            
-                            if (!hasSignal) {
-                                queue.push(nextEdgeId);
-                            }
+                            if (nextEdgeId === currId || visitedEdges.has(nextEdgeId)) continue;
+                            if (!edgeSignals.has(currId) && !edgeSignals.has(nextEdgeId)) queue.push(nextEdgeId);
                         }
                     }
                 }
                 state.blocks.push(currentBlock);
             }
         }
-
-        function getBlockForEdge(edgeId) {
-            return state.blocks.find(b => b.edges.has(edgeId));
-        }
-
-        // --- PATHFINDING ---
-        // Simple random wander for spawned trains
+        function getBlockForEdge(edgeId) { return state.blocks.find(b => b.edges.has(edgeId)); }
         function getNextEdge(train) {
             let currEdge = state.edges.get(train.path[train.pathIdx]);
             let forwardNodeId = train.direction === 1 ? currEdge.n2 : currEdge.n1;
-            let forwardNode = state.nodes.get(forwardNodeId);
-            
-            // Available next edges (excluding the one we just came from)
-            let choices = forwardNode.edges.filter(eid => eid !== currEdge.id);
-            
-            if (choices.length === 0) return null; // End of line
-            
-            // Prefer straight lines
-            let bestChoice = choices[0];
-            return bestChoice;
+            let choices = state.nodes.get(forwardNodeId).edges.filter(eid => eid !== currEdge.id);
+            return choices.length > 0 ? choices[0] : null; // Prefer straight
         }
 
-        // --- TRAIN ENGINE ---
+        // --- TRAIN PHYSICS ---
         class Train {
-            constructor(id, name, type, color, startEdgeId, dir) {
-                this.id = id; this.name = name; this.type = type; this.color = color;
-                this.path = [startEdgeId];
-                this.pathIdx = 0;
-                this.progress = 0.1;
-                this.speedMax = type === 'Premium' ? 140 : type === 'Express' ? 100 : 60;
-                this.speed = 0;
-                this.direction = dir; // 1 or -1
+            constructor(id, name, type, startEdgeId, dir) {
+                this.id = id; this.name = name; this.type = type; 
+                this.color = type.includes('Premium') ? CONFIG.colors.trainPre : type.includes('Express') ? CONFIG.colors.trainExp : CONFIG.colors.trainFrt;
+                this.path = [startEdgeId]; this.pathIdx = 0; this.progress = 0.1;
+                this.speedMax = type.includes('Premium') ? 140 : type.includes('Express') ? 100 : 60;
+                this.speed = 0; this.direction = dir; this.nextSignalState = 'G';
+                this.active = true;
                 
                 let e = state.edges.get(startEdgeId);
-                let n1 = state.nodes.get(e.n1);
-                let n2 = state.nodes.get(e.n2);
-                let startNode = dir === 1 ? n1 : n2;
-                let endNode = dir === 1 ? n2 : n1;
+                let startNode = dir === 1 ? state.nodes.get(e.n1) : state.nodes.get(e.n2);
+                let endNode = dir === 1 ? state.nodes.get(e.n2) : state.nodes.get(e.n1);
                 this.x = startNode.x + (endNode.x - startNode.x) * this.progress;
                 this.y = startNode.y + (endNode.y - startNode.y) * this.progress;
-                
-                this.nextSignalState = 'G';
             }
-            
             update(dt) {
                 let currEdge = state.edges.get(this.path[this.pathIdx]);
-                if(!currEdge) return;
+                if(!currEdge) { this.active = false; return; }
                 
-                // Register occupancy
                 let myBlock = getBlockForEdge(currEdge.id);
                 if(myBlock) myBlock.occupiedBy = this.id;
 
                 let targetSpeed = this.speedMax;
                 if(state.weather) targetSpeed *= 0.5;
-                if(currEdge.broken) targetSpeed = 0;
+                if(currEdge.broken || state.isMaintenance) targetSpeed = 0; // Stop for shadow block
 
-                // Lookahead for signals and blocks
                 this.nextSignalState = 'G';
                 let lookAheadEdgeId = this.pathIdx < this.path.length - 1 ? this.path[this.pathIdx+1] : getNextEdge(this);
                 
                 if (lookAheadEdgeId) {
                     let nextEdge = state.edges.get(lookAheadEdgeId);
                     let nextBlock = getBlockForEdge(lookAheadEdgeId);
-                    
-                    // Is there a signal between us and next block?
                     let signalSeparation = state.signals.find(s => s.edgeId === lookAheadEdgeId || s.edgeId === currEdge.id);
                     
-                    if (nextBlock && nextBlock !== myBlock) {
-                        if (nextBlock.occupiedBy && nextBlock.occupiedBy !== this.id) {
-                            // Block ahead is occupied!
-                            if (signalSeparation) signalSeparation.state = 'R';
-                            this.nextSignalState = 'R';
-                            
-                            // Stop if we are close to the end of the current edge
-                            if (this.progress > 0.8) {
-                                targetSpeed = 0;
-                            } else {
-                                targetSpeed = this.speedMax * 0.4; // slow down approaching red
-                            }
-                        } else {
-                            if (signalSeparation) signalSeparation.state = 'G';
-                        }
+                    if (nextBlock && nextBlock !== myBlock && nextBlock.occupiedBy && nextBlock.occupiedBy !== this.id) {
+                        if (signalSeparation) signalSeparation.state = 'R';
+                        this.nextSignalState = 'R';
+                        targetSpeed = this.progress > 0.8 ? 0 : this.speedMax * 0.4;
+                    } else {
+                        if (signalSeparation) signalSeparation.state = 'G';
                     }
-                    
-                    if (nextEdge.broken && this.progress > 0.7) {
-                        targetSpeed = 0;
-                    }
-                } else {
-                    // End of line approaching
-                    if (this.progress > 0.8) targetSpeed = 0;
-                }
+                    if (nextEdge.broken && this.progress > 0.7) targetSpeed = 0;
+                } else if (this.progress > 0.8) targetSpeed = 0;
 
-                // Physics
                 if (this.speed < targetSpeed) this.speed += 1.0;
                 if (this.speed > targetSpeed) this.speed -= 2.0;
                 if (this.speed < 0) this.speed = 0;
-                
-                // Very small stop clamp
                 if (targetSpeed === 0 && this.speed < 5) this.speed = 0;
 
                 if (this.speed > 0) {
-                    let moveDist = (this.speed / 60) * dt; 
+                    let moveDist = (this.speed / 60) * (dt * 5); // scale up physical speed relative to 1x clock
                     this.progress += moveDist / currEdge.length;
                     
                     if(this.progress >= 1) {
-                        // Move to next edge
                         let nextEId = lookAheadEdgeId;
                         if (nextEId) {
                             let nextE = state.edges.get(nextEId);
-                            // Determine new direction
                             let forwardNodeId = this.direction === 1 ? currEdge.n2 : currEdge.n1;
-                            if (nextE.n1 === forwardNodeId) this.direction = 1;
-                            else this.direction = -1;
-                            
-                            this.path.push(nextEId);
-                            this.pathIdx++;
-                            this.progress = 0;
-                            
-                            // Clear old block if we fully left it
+                            this.direction = nextE.n1 === forwardNodeId ? 1 : -1;
+                            this.path.push(nextEId); this.pathIdx++; this.progress = 0;
                             if(myBlock) myBlock.occupiedBy = null;
-                        } else {
-                            this.progress = 1; // Stuck at end
-                        }
+                        } else this.progress = 1;
                     }
                 }
                 
-                // Update Pos
-                currEdge = state.edges.get(this.path[this.pathIdx]); // refresh
-                let n1 = state.nodes.get(currEdge.n1);
-                let n2 = state.nodes.get(currEdge.n2);
-                let startNode = this.direction === 1 ? n1 : n2;
-                let endNode = this.direction === 1 ? n2 : n1;
-                
+                currEdge = state.edges.get(this.path[this.pathIdx]);
+                let startNode = this.direction === 1 ? state.nodes.get(currEdge.n1) : state.nodes.get(currEdge.n2);
+                let endNode = this.direction === 1 ? state.nodes.get(currEdge.n2) : state.nodes.get(currEdge.n1);
                 this.x = startNode.x + (endNode.x - startNode.x) * this.progress;
                 this.y = startNode.y + (endNode.y - startNode.y) * this.progress;
             }
         }
 
-        // --- INIT DEFAULT LAYOUT ---
+        // --- INIT DEFAULT COMPLEX LAYOUT ---
         function initLayout() {
-            // Main Line
-            for(let x=10; x<=40; x+=5) {
-                addEdge(addNode(x, 10), addNode(x+5, 10)); // UP
-                addEdge(addNode(x, 12), addNode(x+5, 12)); // DOWN
+            // Main UP and DOWN lines
+            for(let y=10; y<=50; y+=5) {
+                addEdge(addNode(15, y), addNode(15, y+5)); // UP
+                addEdge(addNode(20, y), addNode(20, y+5)); // DOWN
             }
             
-            // Loop at x=20
-            addEdge(addNode(20, 10), addNode(22, 8));
-            addEdge(addNode(22, 8), addNode(28, 8));
-            addEdge(addNode(28, 8), addNode(30, 10));
-
-            state.stations.push({ name: 'Alpha Station', x: 12, y: 11, w: 4, h: 4 });
-            state.stations.push({ name: 'Beta Station', x: 38, y: 11, w: 4, h: 4 });
-
-            state.signals.push({ edgeId: '20,10_25,10', pos: 0.1, state: 'G' });
-            state.signals.push({ edgeId: '25,10_30,10', pos: 0.1, state: 'G' });
-            state.signals.push({ edgeId: '22,8_28,8', pos: 0.1, state: 'G' });
+            // Loop / Crossover at KRMI (y=20 to 30)
+            addEdge(addNode(15, 20), addNode(10, 22));
+            addEdge(addNode(10, 22), addNode(10, 28));
+            addEdge(addNode(10, 28), addNode(15, 30));
+            
+            // Stations
+            state.stations.push({ name: 'MAO', x: 17.5, y: 52, w: 8, h: 3 });
+            state.stations.push({ name: 'KRMI', x: 17.5, y: 25, w: 8, h: 3 });
+            state.stations.push({ name: 'THVM', x: 17.5, y: 15, w: 8, h: 3 });
+            
+            // Default Signals
+            state.signals.push({ edgeId: '15,15_15,20', pos: 0.1, state: 'G' });
+            state.signals.push({ edgeId: '15,30_15,35', pos: 0.1, state: 'G' });
+            state.signals.push({ edgeId: '20,40_20,45', pos: 0.1, state: 'G' });
 
             recalculateBlocks();
 
-            state.trains.push(new Train('T1', '22229 Vande Bharat', 'Premium', CONFIG.colors.trainPre, '10,10_15,10', 1));
-            state.trains.push(new Train('T2', 'BOXN Freight', 'Freight', CONFIG.colors.trainFrt, '40,12_45,12', -1));
-
             // Center Camera
-            state.camera.x = 0; 
-            state.camera.y = 0;
-            state.camera.zoom = 1.2;
-            
-            // Center map on screen
-            setTimeout(() => {
-                state.camera.x = canvas.width/2 - 25 * CONFIG.gridSize * state.camera.zoom;
-                state.camera.y = canvas.height/2 - 11 * CONFIG.gridSize * state.camera.zoom;
-            }, 100);
+            state.camera.x = canvas.width/2 - 17.5 * CONFIG.gridSize;
+            state.camera.y = canvas.height/2 - 30 * CONFIG.gridSize;
         }
 
-        // --- INPUT HANDLING ---
+        // --- INPUT / UI BINDINGS ---
         let isPanning = false;
-        
         canvas.addEventListener('mousedown', (e) => {
-            const mPos = getMousePos(e);
+            if (e.button === 1 || e.button === 2 || (e.button === 0 && state.tool === 'select')) { isPanning = true; document.getElementById('canvas-container').classList.add('panning'); return; }
+            if (e.button !== 0) return;
             
-            // Middle click or Right click pan
-            if (e.button === 1 || e.button === 2 || (e.button === 0 && state.tool === 'select')) {
-                isPanning = true;
-                document.getElementById('canvas-container').classList.add('panning');
-                return;
-            }
-            
-            if (e.button !== 0) return; // Only left clicks for tools
-
-            const wPos = screenToWorld(mPos.x, mPos.y);
+            const wPos = screenToWorld(getMousePos(e).x, getMousePos(e).y);
             const grid = worldToGrid(wPos.x, wPos.y);
             
-            if (state.tool === 'track') {
-                state.dragStart = { ...grid };
-            } else if (state.tool === 'delete') {
-                let edge = getEdgeAt(wPos.x, wPos.y);
-                if(edge) { removeEdge(edge.id); showToast("Track deleted"); }
-            } else if (state.tool === 'break_rail') {
-                let edge = getEdgeAt(wPos.x, wPos.y);
-                if(edge) { 
-                    edge.broken = !edge.broken; 
-                    showToast(edge.broken ? "Rail Broken!" : "Rail Repaired");
-                }
-            } else if (state.tool === 'signal') {
-                let edge = getEdgeAt(wPos.x, wPos.y);
-                if(edge) {
-                    state.signals.push({ edgeId: edge.id, pos: 0.5, state: 'G' });
-                    recalculateBlocks();
-                    showToast("Signal Placed");
-                }
-            } else if (state.tool === 'station') {
-                let n = prompt("Enter Station Name:");
-                if(n) {
-                    state.stations.push({ name: n, x: grid.x, y: grid.y, w: 4, h: 3 });
-                    showToast("Station Created");
-                }
-            } else if (state.tool === 'train') {
-                let edge = getEdgeAt(wPos.x, wPos.y);
-                if(edge) {
-                    const types = ['Premium', 'Express', 'Freight'];
-                    const colors = [CONFIG.colors.trainPre, CONFIG.colors.trainExp, CONFIG.colors.trainFrt];
-                    let tIdx = Math.floor(Math.random() * 3);
-                    let n = prompt("Enter Train Name:", "New Train");
-                    if(n) {
-                        state.trains.push(new Train('T'+Date.now(), n, types[tIdx], colors[tIdx], edge.id, 1));
-                        showToast("Train Spawned");
-                    }
-                }
-            }
+            if (state.tool === 'track') state.dragStart = { ...grid };
+            else if (state.tool === 'delete') { let edge = getEdgeAt(wPos.x, wPos.y); if(edge) { removeEdge(edge.id); showToast("Deleted"); } }
+            else if (state.tool === 'break_rail') { let edge = getEdgeAt(wPos.x, wPos.y); if(edge) { edge.broken = !edge.broken; showToast(edge.broken ? "Rail Broken" : "Repaired"); } }
+            else if (state.tool === 'signal') { let edge = getEdgeAt(wPos.x, wPos.y); if(edge) { state.signals.push({ edgeId: edge.id, pos: 0.5, state: 'G' }); recalculateBlocks(); showToast("Signal Added"); } }
+            else if (state.tool === 'station') { let n = prompt("Station Name:"); if(n) { state.stations.push({ name: n, x: grid.x, y: grid.y, w: 4, h: 3 }); showToast("Station Added"); } }
         });
         
         canvas.addEventListener('mousemove', (e) => {
-            const mPos = getMousePos(e);
-            
-            if (isPanning) {
-                state.camera.x += e.movementX;
-                state.camera.y += e.movementY;
-            }
-            
-            const wPos = screenToWorld(mPos.x, mPos.y);
+            if (isPanning) { state.camera.x += e.movementX; state.camera.y += e.movementY; }
+            const wPos = screenToWorld(getMousePos(e).x, getMousePos(e).y);
             state.hoveredGrid = worldToGrid(wPos.x, wPos.y);
         });
         
         canvas.addEventListener('mouseup', (e) => {
-            isPanning = false;
-            document.getElementById('canvas-container').classList.remove('panning');
-            
+            isPanning = false; document.getElementById('canvas-container').classList.remove('panning');
             if (e.button === 0 && state.tool === 'select' && !isPanning) {
-                const mPos = getMousePos(e);
-                const wPos = screenToWorld(mPos.x, mPos.y);
-                
+                const wPos = screenToWorld(getMousePos(e).x, getMousePos(e).y);
                 state.selectedTrain = null;
                 for(let tr of state.trains) {
-                    let tx = tr.x * CONFIG.gridSize;
-                    let ty = tr.y * CONFIG.gridSize;
-                    if(Math.abs(wPos.x - tx) < 20 && Math.abs(wPos.y - ty) < 20) {
-                        state.selectedTrain = tr;
-                        break;
-                    }
+                    if(Math.abs(wPos.x - tr.x*CONFIG.gridSize) < 20 && Math.abs(wPos.y - tr.y*CONFIG.gridSize) < 20) { state.selectedTrain = tr; break; }
                 }
                 updateInfoPanel();
             }
-
             if (e.button === 0 && state.tool === 'track' && state.dragStart) {
                 if (state.dragStart.x !== state.hoveredGrid.x || state.dragStart.y !== state.hoveredGrid.y) {
-                    let n1 = addNode(state.dragStart.x, state.dragStart.y);
-                    let n2 = addNode(state.hoveredGrid.x, state.hoveredGrid.y);
-                    addEdge(n1, n2);
+                    addEdge(addNode(state.dragStart.x, state.dragStart.y), addNode(state.hoveredGrid.x, state.hoveredGrid.y));
                 }
                 state.dragStart = null;
             }
         });
 
         canvas.addEventListener('contextmenu', e => e.preventDefault());
-        
         canvas.addEventListener('wheel', (e) => {
-            e.preventDefault();
-            const mPos = getMousePos(e);
-            const zoomAmount = -e.deltaY * 0.001;
-            const newZoom = Math.max(0.3, Math.min(4, state.camera.zoom + zoomAmount));
-            
-            // Zoom toward mouse
-            state.camera.x = mPos.x - (mPos.x - state.camera.x) * (newZoom / state.camera.zoom);
-            state.camera.y = mPos.y - (mPos.y - state.camera.y) * (newZoom / state.camera.zoom);
-            state.camera.zoom = newZoom;
+            e.preventDefault(); const mPos = getMousePos(e); const z = -e.deltaY * 0.001; const newZ = Math.max(0.3, Math.min(4, state.camera.zoom + z));
+            state.camera.x = mPos.x - (mPos.x - state.camera.x) * (newZ / state.camera.zoom); state.camera.y = mPos.y - (mPos.y - state.camera.y) * (newZ / state.camera.zoom); state.camera.zoom = newZ;
         });
 
-        // --- UI BINDINGS ---
         document.querySelectorAll('.tool-btn').forEach(btn => {
-            btn.addEventListener('click', () => {
-                document.querySelectorAll('.tool-btn').forEach(b => b.classList.remove('active'));
-                btn.classList.add('active');
-                state.tool = btn.dataset.tool;
-                document.getElementById('canvas-container').className = (state.tool !== 'select' && state.tool !== 'delete') ? 'tool-active' : '';
-            });
+            btn.addEventListener('click', () => { document.querySelectorAll('.tool-btn').forEach(b => b.classList.remove('active')); btn.classList.add('active'); state.tool = btn.dataset.tool; document.getElementById('canvas-container').className = (state.tool !== 'select' && state.tool !== 'delete') ? 'tool-active' : ''; });
         });
-        document.querySelectorAll('.speed-btn').forEach(btn => {
-            btn.addEventListener('click', () => {
-                document.querySelectorAll('.speed-btn').forEach(b => b.classList.remove('active'));
-                btn.classList.add('active');
-                CONFIG.simSpeed = parseFloat(btn.dataset.speed);
-                showToast(btn.dataset.speed + "x Speed");
-            });
-        });
+        document.querySelectorAll('.speed-btn').forEach(btn => { btn.addEventListener('click', () => { document.querySelectorAll('.speed-btn').forEach(b => b.classList.remove('active')); btn.classList.add('active'); CONFIG.simSpeed = parseFloat(btn.dataset.speed); }); });
+        document.getElementById('btn-play').addEventListener('click', (e) => { state.isPaused = false; e.currentTarget.classList.add('active'); document.getElementById('btn-pause').classList.remove('active'); });
+        document.getElementById('btn-pause').addEventListener('click', (e) => { state.isPaused = true; e.currentTarget.classList.add('active'); document.getElementById('btn-play').classList.remove('active'); });
+        document.getElementById('btn-fullscreen').addEventListener('click', () => { if (!document.fullscreenElement) document.documentElement.requestFullscreen(); else if (document.exitFullscreen) document.exitFullscreen(); });
         
-        document.getElementById('btn-play').addEventListener('click', (e) => { 
-            state.isPaused = false; 
-            e.currentTarget.classList.add('active'); 
-            document.getElementById('btn-pause').classList.remove('active'); 
-        });
-        document.getElementById('btn-pause').addEventListener('click', (e) => { 
-            state.isPaused = true; 
-            e.currentTarget.classList.add('active'); 
-            document.getElementById('btn-play').classList.remove('active'); 
-        });
-        
+        scrubber.addEventListener('input', (e) => { state.time = parseFloat(e.target.value); clockDisplay.innerText = formatTime(state.time); });
+
         document.getElementById('disrupt-weather').addEventListener('click', (e) => {
-            state.weather = !state.weather;
-            e.currentTarget.classList.toggle('active', state.weather);
+            state.weather = !state.weather; e.currentTarget.classList.toggle('active', state.weather);
             if(state.weather) {
-                showToast("Severe Weather Warning");
-                // Init particles
-                state.particles = [];
-                for(let i=0; i<300; i++) {
-                    state.particles.push({
-                        x: Math.random() * canvas.width,
-                        y: Math.random() * canvas.height,
-                        s: Math.random() * 5 + 5
-                    });
-                }
+                state.particles = []; for(let i=0; i<300; i++) state.particles.push({x: Math.random()*canvas.width, y: Math.random()*canvas.height, s: Math.random()*5+5});
             }
         });
-        
-        document.getElementById('btn-clear-faults').addEventListener('click', () => {
-            state.weather = false;
-            document.getElementById('disrupt-weather').classList.remove('active');
-            for(let [id, e] of state.edges) e.broken = false;
-            showToast("All faults repaired");
-        });
+        document.getElementById('btn-clear-faults').addEventListener('click', () => { state.weather = false; document.getElementById('disrupt-weather').classList.remove('active'); for(let [id, e] of state.edges) e.broken = false; showToast("Repaired"); });
 
         function updateInfoPanel() {
             const p = document.getElementById('info-panel');
-            if(!state.selectedTrain) {
-                p.style.display = 'none';
-                return;
-            }
+            if(!state.selectedTrain) { p.style.display = 'none'; return; }
             p.style.display = 'block';
             document.getElementById('info-title').firstElementChild.innerText = state.selectedTrain.name;
             document.getElementById('info-type').innerText = state.selectedTrain.type;
             document.getElementById('info-type').style.color = state.selectedTrain.color;
-            
-            let spd = Math.round(state.selectedTrain.speed);
-            document.getElementById('info-speed').innerText = spd + " km/h";
-            
+            let spd = Math.round(state.selectedTrain.speed); document.getElementById('info-speed').innerText = spd + " km/h";
             let badge = document.getElementById('info-badge');
-            if(spd === 0) {
-                badge.className = 'status-badge status-stopped';
-                badge.innerText = 'STOPPED';
-            } else {
-                badge.className = 'status-badge status-moving';
-                badge.innerText = 'MOVING';
+            if(spd === 0) { badge.className = 'status-badge status-stopped'; badge.innerText = 'STOPPED'; } else { badge.className = 'status-badge status-moving'; badge.innerText = 'MOVING'; }
+            let sigStr = state.selectedTrain.nextSignalState; let sigEl = document.getElementById('info-signal');
+            sigEl.innerText = sigStr === 'G' ? 'Clear' : sigStr === 'R' ? 'Danger' : 'Caution'; sigEl.style.color = sigStr === 'G' ? CONFIG.colors.sigG : CONFIG.colors.sigR;
+        }
+
+        // TIMETABLE SPAWNER
+        let spawnedTrainIds = new Set();
+        function checkSpawns() {
+            if(!SERVER_DATA.trajectories) return;
+            for(let t of SERVER_DATA.trajectories) {
+                if(state.time >= t.entry_min && state.time <= t.exit_min && !spawnedTrainIds.has(t.train_no)) {
+                    let isUp = t.direction.includes('UP');
+                    // UP spawns at MAO (15, 50), DOWN spawns at PERN (20, 10)
+                    let startEdge = isUp ? '15,45_15,50' : '20,10_20,15';
+                    if(state.edges.has(startEdge)) {
+                        state.trains.push(new Train(t.train_no, t.train_name, t.category, startEdge, isUp ? -1 : 1));
+                        spawnedTrainIds.add(t.train_no);
+                    }
+                }
             }
-            
-            let sigStr = state.selectedTrain.nextSignalState;
-            let sigEl = document.getElementById('info-signal');
-            sigEl.innerText = sigStr === 'G' ? 'Clear (Green)' : sigStr === 'R' ? 'Danger (Red)' : 'Caution';
-            sigEl.style.color = sigStr === 'G' ? CONFIG.colors.sigG : CONFIG.colors.sigR;
+            // Cleanup inactive
+            state.trains = state.trains.filter(tr => tr.active);
         }
 
         // --- RENDER LOOP ---
         let lastTime = performance.now();
         function loop(time) {
-            let dt = (time - lastTime) * 0.01 * CONFIG.simSpeed;
+            let dt = (time - lastTime) / 1000;
             lastTime = time;
             
-            // Clear occupancy
             for(let b of state.blocks) b.occupiedBy = null;
 
             if(!state.isPaused) {
+                state.time += dt * (CONFIG.simSpeed / 60) * 100; // Time acceleration multiplier
+                if(state.time > 1440) { state.time = 0; spawnedTrainIds.clear(); state.trains = []; }
+                scrubber.value = state.time; clockDisplay.innerText = formatTime(state.time);
+                
+                checkSpawns();
                 for(let tr of state.trains) tr.update(dt);
                 if(state.selectedTrain && time % 200 < 20) updateInfoPanel();
             }
 
-            // Draw Background
-            ctx.fillStyle = CONFIG.colors.bgDark;
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            state.isMaintenance = (state.time >= sStart && state.time <= sEnd && sEnd > sStart);
+            document.getElementById('maintenance-alert').classList.toggle('active', state.isMaintenance);
+
+            ctx.fillStyle = CONFIG.colors.bgDark; ctx.fillRect(0, 0, canvas.width, canvas.height);
             
-            ctx.save();
-            ctx.translate(state.camera.x, state.camera.y);
-            ctx.scale(state.camera.zoom, state.camera.zoom);
-            
+            ctx.save(); ctx.translate(state.camera.x, state.camera.y); ctx.scale(state.camera.zoom, state.camera.zoom);
             const gs = CONFIG.gridSize;
             
-            // Grid Lines (Subtle)
-            const vSX = Math.floor(-state.camera.x / (gs * state.camera.zoom));
-            const vSY = Math.floor(-state.camera.y / (gs * state.camera.zoom));
-            const vEX = vSX + Math.ceil(canvas.width / (gs * state.camera.zoom));
-            const vEY = vSY + Math.ceil(canvas.height / (gs * state.camera.zoom));
-            
-            ctx.lineWidth = 1;
-            ctx.strokeStyle = 'rgba(255,255,255,0.03)';
-            ctx.beginPath();
+            // Grid
+            const vSX = Math.floor(-state.camera.x / (gs * state.camera.zoom)), vSY = Math.floor(-state.camera.y / (gs * state.camera.zoom));
+            const vEX = vSX + Math.ceil(canvas.width / (gs * state.camera.zoom)), vEY = vSY + Math.ceil(canvas.height / (gs * state.camera.zoom));
+            ctx.lineWidth = 1; ctx.strokeStyle = 'rgba(255,255,255,0.03)'; ctx.beginPath();
             for(let x=vSX; x<=vEX; x++) { ctx.moveTo(x*gs, vSY*gs); ctx.lineTo(x*gs, vEY*gs); }
-            for(let y=vSY; y<=vEY; y++) { ctx.moveTo(vSX*gs, y*gs); ctx.lineTo(vEX*gs, y*gs); }
-            ctx.stroke();
+            for(let y=vSY; y<=vEY; y++) { ctx.moveTo(vSX*gs, y*gs); ctx.lineTo(vEX*gs, y*gs); } ctx.stroke();
 
-            // Edges (Tracks)
+            // Edges
             for (let [id, edge] of state.edges) {
                 let n1 = state.nodes.get(edge.n1), n2 = state.nodes.get(edge.n2);
-                let isHovered = (state.tool === 'delete' || state.tool === 'break_rail' || state.tool === 'signal' || state.tool === 'train') && getEdgeAt(state.hoveredGrid.x * gs, state.hoveredGrid.y * gs) === edge;
+                let isHovered = (state.tool === 'delete' || state.tool === 'break_rail' || state.tool === 'signal') && getEdgeAt(state.hoveredGrid.x * gs, state.hoveredGrid.y * gs) === edge;
                 
-                // Track Glow for selection/hover
                 if ((state.selectedTrain && state.selectedTrain.path.includes(id)) || isHovered) {
-                    ctx.strokeStyle = edge.broken ? '#ef4444' : CONFIG.colors.trackGlow;
-                    ctx.globalAlpha = 0.4;
-                    ctx.lineWidth = 18;
-                    ctx.beginPath(); ctx.moveTo(n1.x*gs, n1.y*gs); ctx.lineTo(n2.x*gs, n2.y*gs); ctx.stroke();
-                    ctx.globalAlpha = 1.0;
+                    ctx.strokeStyle = edge.broken ? '#ef4444' : CONFIG.colors.trackGlow; ctx.globalAlpha = 0.4; ctx.lineWidth = 18;
+                    ctx.beginPath(); ctx.moveTo(n1.x*gs, n1.y*gs); ctx.lineTo(n2.x*gs, n2.y*gs); ctx.stroke(); ctx.globalAlpha = 1.0;
                 }
                 
-                // Broken highlight permanent
-                if (edge.broken) {
-                    ctx.strokeStyle = 'rgba(239, 68, 68, 0.6)';
-                    ctx.lineWidth = 14;
-                    ctx.beginPath(); ctx.moveTo(n1.x*gs, n1.y*gs); ctx.lineTo(n2.x*gs, n2.y*gs); ctx.stroke();
-                }
+                if (state.isMaintenance) { ctx.strokeStyle = 'rgba(234, 179, 8, 0.4)'; ctx.lineWidth = 14; ctx.beginPath(); ctx.moveTo(n1.x*gs, n1.y*gs); ctx.lineTo(n2.x*gs, n2.y*gs); ctx.stroke(); }
+                if (edge.broken) { ctx.strokeStyle = 'rgba(239, 68, 68, 0.6)'; ctx.lineWidth = 14; ctx.beginPath(); ctx.moveTo(n1.x*gs, n1.y*gs); ctx.lineTo(n2.x*gs, n2.y*gs); ctx.stroke(); }
 
-                // Ties
-                ctx.strokeStyle = CONFIG.colors.tie; ctx.setLineDash([3, 7]); ctx.lineWidth = 10;
-                ctx.beginPath(); ctx.moveTo(n1.x*gs, n1.y*gs); ctx.lineTo(n2.x*gs, n2.y*gs); ctx.stroke();
-                
-                // Rails
-                ctx.strokeStyle = CONFIG.colors.track; ctx.setLineDash([]); ctx.lineWidth = 4;
-                ctx.beginPath(); ctx.moveTo(n1.x*gs, n1.y*gs); ctx.lineTo(n2.x*gs, n2.y*gs); ctx.stroke();
+                ctx.strokeStyle = CONFIG.colors.tie; ctx.setLineDash([3, 7]); ctx.lineWidth = 10; ctx.beginPath(); ctx.moveTo(n1.x*gs, n1.y*gs); ctx.lineTo(n2.x*gs, n2.y*gs); ctx.stroke();
+                ctx.strokeStyle = state.isMaintenance ? CONFIG.colors.trackMaint : CONFIG.colors.track; ctx.setLineDash([]); ctx.lineWidth = 4; ctx.beginPath(); ctx.moveTo(n1.x*gs, n1.y*gs); ctx.lineTo(n2.x*gs, n2.y*gs); ctx.stroke();
             }
 
             // Signals
@@ -709,118 +501,62 @@
                 let edge = state.edges.get(sig.edgeId);
                 if(edge) {
                     let n1 = state.nodes.get(edge.n1), n2 = state.nodes.get(edge.n2);
-                    let sx = n1.x + (n2.x - n1.x) * sig.pos;
-                    let sy = n1.y + (n2.y - n1.y) * sig.pos;
-                    
-                    // Signal pole
-                    ctx.fillStyle = '#1e293b';
-                    ctx.fillRect(sx*gs + 6, sy*gs - 6, 4, 12);
-                    
-                    // Light
+                    let sx = n1.x + (n2.x - n1.x) * sig.pos, sy = n1.y + (n2.y - n1.y) * sig.pos;
+                    ctx.fillStyle = '#1e293b'; ctx.fillRect(sx*gs + 6, sy*gs - 6, 4, 12);
                     ctx.fillStyle = sig.state === 'G' ? CONFIG.colors.sigG : sig.state === 'R' ? CONFIG.colors.sigR : CONFIG.colors.sigY;
                     ctx.beginPath(); ctx.arc(sx*gs + 8, sy*gs, 5, 0, Math.PI*2); ctx.fill();
-                    
-                    // Glow
-                    ctx.shadowBlur = 10; ctx.shadowColor = ctx.fillStyle;
-                    ctx.beginPath(); ctx.arc(sx*gs + 8, sy*gs, 3, 0, Math.PI*2); ctx.fill();
-                    ctx.shadowBlur = 0;
+                    ctx.shadowBlur = 10; ctx.shadowColor = ctx.fillStyle; ctx.beginPath(); ctx.arc(sx*gs + 8, sy*gs, 3, 0, Math.PI*2); ctx.fill(); ctx.shadowBlur = 0;
                 }
             }
 
             // Stations
             for (let stn of state.stations) {
-                let sx = stn.x*gs;
-                let sy = stn.y*gs;
-                
-                ctx.fillStyle = '#1e293b'; 
-                ctx.beginPath(); ctx.roundRect(sx - 20, sy - gs*stn.h/2, gs*stn.w, gs*stn.h, 8); ctx.fill();
+                let sx = stn.x*gs, sy = stn.y*gs;
+                ctx.fillStyle = '#1e293b'; ctx.beginPath(); ctx.roundRect(sx - gs*stn.w/2, sy - gs*stn.h/2, gs*stn.w, gs*stn.h, 8); ctx.fill();
                 ctx.strokeStyle = '#475569'; ctx.lineWidth = 2; ctx.stroke();
-                
-                ctx.fillStyle = '#f8fafc'; ctx.font = '600 14px Inter'; 
-                ctx.fillText(stn.name, sx - 10, sy - gs*stn.h/2 + 20);
+                ctx.fillStyle = '#f8fafc'; ctx.font = '600 14px Inter'; ctx.textAlign = 'center'; ctx.fillText(stn.name, sx, sy + 5);
             }
 
             // Trains
             for (let tr of state.trains) {
-                let isSel = state.selectedTrain === tr;
-                let headSize = isSel ? 1.4 : 1;
-                
-                let tx = tr.x*gs; let ty = tr.y*gs;
-                
-                // Orient rect along edge
-                let currEdge = state.edges.get(tr.path[tr.pathIdx]);
-                let angle = 0;
+                let isSel = state.selectedTrain === tr; let headSize = isSel ? 1.4 : 1;
+                let tx = tr.x*gs, ty = tr.y*gs;
+                let currEdge = state.edges.get(tr.path[tr.pathIdx]); let angle = 0;
                 if(currEdge) {
-                    let n1 = state.nodes.get(currEdge.n1), n2 = state.nodes.get(currEdge.n2);
-                    let start = tr.direction === 1 ? n1 : n2;
-                    let end = tr.direction === 1 ? n2 : n1;
+                    let start = tr.direction === 1 ? state.nodes.get(currEdge.n1) : state.nodes.get(currEdge.n2);
+                    let end = tr.direction === 1 ? state.nodes.get(currEdge.n2) : state.nodes.get(currEdge.n1);
                     angle = Math.atan2(end.y - start.y, end.x - start.x);
                 }
-
-                ctx.save();
-                ctx.translate(tx, ty);
-                ctx.rotate(angle);
-                
-                ctx.fillStyle = tr.color;
-                if(isSel) { ctx.shadowColor = tr.color; ctx.shadowBlur = 15; }
-                
-                // Locomotive body
+                ctx.save(); ctx.translate(tx, ty); ctx.rotate(angle);
+                ctx.fillStyle = tr.color; if(isSel) { ctx.shadowColor = tr.color; ctx.shadowBlur = 15; }
                 ctx.beginPath(); ctx.roundRect(-12*headSize, -8*headSize, 24*headSize, 16*headSize, 4); ctx.fill();
-                
-                // Cab window
-                ctx.fillStyle = '#0f172a';
-                ctx.fillRect(4*headSize, -6*headSize, 6*headSize, 12*headSize);
-                
+                ctx.fillStyle = '#0f172a'; ctx.fillRect(4*headSize, -6*headSize, 6*headSize, 12*headSize);
                 ctx.restore();
                 
-                // Label
                 if(state.camera.zoom > 0.7 || isSel) {
-                    ctx.fillStyle = '#ffffff'; ctx.font = '600 12px Inter';
-                    
-                    // Small background pill for text
-                    let tw = ctx.measureText(tr.name).width;
-                    ctx.fillStyle = 'rgba(15,23,42,0.7)';
+                    ctx.textAlign = 'center';
+                    let tw = ctx.measureText(tr.name).width; ctx.fillStyle = 'rgba(15,23,42,0.7)';
                     ctx.beginPath(); ctx.roundRect(tx - tw/2 - 4, ty + 12, tw + 8, 20, 10); ctx.fill();
-                    
-                    ctx.fillStyle = '#ffffff';
-                    ctx.fillText(tr.name, tx - tw/2, ty + 26);
+                    ctx.fillStyle = '#ffffff'; ctx.fillText(tr.name, tx, ty + 26);
                 }
             }
 
-            // Editor UI (Ghost)
+            // Editor Ghost
             if (state.tool === 'track') {
-                ctx.fillStyle = 'rgba(56, 189, 248, 0.4)'; 
-                ctx.beginPath(); ctx.arc(state.hoveredGrid.x*gs, state.hoveredGrid.y*gs, 8, 0, Math.PI*2); ctx.fill();
-                
-                if (state.dragStart) {
-                    ctx.strokeStyle = CONFIG.colors.trackGlow; ctx.lineWidth = 4;
-                    ctx.beginPath(); ctx.moveTo(state.dragStart.x*gs, state.dragStart.y*gs); ctx.lineTo(state.hoveredGrid.x*gs, state.hoveredGrid.y*gs); ctx.stroke();
-                }
-            } else if (state.tool === 'station') {
-                ctx.fillStyle = 'rgba(51, 65, 85, 0.5)';
-                ctx.fillRect(state.hoveredGrid.x*gs - 20, state.hoveredGrid.y*gs - gs*1.5, gs*4, gs*3);
-            }
+                ctx.fillStyle = 'rgba(56, 189, 248, 0.4)'; ctx.beginPath(); ctx.arc(state.hoveredGrid.x*gs, state.hoveredGrid.y*gs, 8, 0, Math.PI*2); ctx.fill();
+                if (state.dragStart) { ctx.strokeStyle = CONFIG.colors.trackGlow; ctx.lineWidth = 4; ctx.beginPath(); ctx.moveTo(state.dragStart.x*gs, state.dragStart.y*gs); ctx.lineTo(state.hoveredGrid.x*gs, state.hoveredGrid.y*gs); ctx.stroke(); }
+            } else if (state.tool === 'station') { ctx.fillStyle = 'rgba(51, 65, 85, 0.5)'; ctx.fillRect(state.hoveredGrid.x*gs - gs*2, state.hoveredGrid.y*gs - gs*1.5, gs*4, gs*3); }
             
             ctx.restore();
             
-            // Screen-space Weather Particle System
+            // Weather
             if(state.weather) {
-                ctx.fillStyle = 'rgba(15, 23, 42, 0.3)'; // Fog
-                ctx.fillRect(0, 0, canvas.width, canvas.height);
-                
-                ctx.strokeStyle = 'rgba(200, 220, 255, 0.4)';
-                ctx.lineWidth = 1.5;
-                ctx.beginPath();
+                ctx.fillStyle = 'rgba(15, 23, 42, 0.3)'; ctx.fillRect(0, 0, canvas.width, canvas.height);
+                ctx.strokeStyle = 'rgba(200, 220, 255, 0.4)'; ctx.lineWidth = 1.5; ctx.beginPath();
                 for(let p of state.particles) {
-                    if(!state.isPaused) {
-                        p.y += p.s * CONFIG.simSpeed * dt * 5;
-                        p.x += (p.s * 0.2) * CONFIG.simSpeed * dt * 5; // slight wind
-                        if(p.y > canvas.height) { p.y = -10; p.x = Math.random() * canvas.width; }
-                    }
-                    ctx.moveTo(p.x, p.y);
-                    ctx.lineTo(p.x + p.s*0.2, p.y + p.s);
-                }
-                ctx.stroke();
+                    if(!state.isPaused) { p.y += p.s * CONFIG.simSpeed * dt * 50; p.x += (p.s * 0.2) * CONFIG.simSpeed * dt * 50; if(p.y > canvas.height) { p.y = -10; p.x = Math.random() * canvas.width; } }
+                    ctx.moveTo(p.x, p.y); ctx.lineTo(p.x + p.s*0.2, p.y + p.s);
+                } ctx.stroke();
             }
 
             requestAnimationFrame(loop);
