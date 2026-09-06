@@ -1,3 +1,4 @@
+import os
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 import pandas as pd
@@ -8,7 +9,11 @@ app = FastAPI(title="Railway Predictive Maintenance API")
 
 # 2. Load the trained AI model
 print("Loading AI Model...")
-model = joblib.load('rf_model.pkl')
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+MODEL_PATH = os.path.join(BASE_DIR, "models", "rf_model.pkl")
+if not os.path.exists(MODEL_PATH):
+    MODEL_PATH = os.path.join(BASE_DIR, "rf_model.pkl")
+model = joblib.load(MODEL_PATH)
 
 # 3. Define the expected JSON payload format
 class SensorTelemetry(BaseModel):

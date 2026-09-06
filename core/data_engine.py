@@ -10,7 +10,9 @@ import os
 from typing import Dict, Any, List
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-CSV_PATH = os.path.join(BASE_DIR, "FINAL_ML_READY_DATA.csv")
+CSV_PATH = os.path.join(BASE_DIR, "data", "FINAL_ML_READY_DATA.csv")
+if not os.path.exists(CSV_PATH):
+    CSV_PATH = os.path.join(BASE_DIR, "FINAL_ML_READY_DATA.csv")
 
 CORRIDOR_STATIONS = {
     'MAO': {'name': 'Madgaon Jn', 'km': 0, 'code': 'MAO'},

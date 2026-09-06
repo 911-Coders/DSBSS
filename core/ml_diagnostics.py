@@ -10,8 +10,13 @@ import joblib
 from typing import Dict, Any, Tuple
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-MODEL_PATH = os.path.join(BASE_DIR, "rf_model.pkl")
-TELEMETRY_CSV = os.path.join(BASE_DIR, "point_machine_telemetry_trend.csv")
+MODEL_PATH = os.path.join(BASE_DIR, "models", "rf_model.pkl")
+if not os.path.exists(MODEL_PATH):
+    MODEL_PATH = os.path.join(BASE_DIR, "rf_model.pkl")
+
+TELEMETRY_CSV = os.path.join(BASE_DIR, "data", "point_machine_telemetry_trend.csv")
+if not os.path.exists(TELEMETRY_CSV):
+    TELEMETRY_CSV = os.path.join(BASE_DIR, "point_machine_telemetry_trend.csv")
 
 def load_telemetry_data(num_records: int = 100) -> pd.DataFrame:
     """Loads recent switch machine sensor telemetry."""

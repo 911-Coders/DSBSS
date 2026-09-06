@@ -38,12 +38,40 @@ The data processing, prediction, and routing engines were successfully validated
 *   **Corridor Size:** Successfully extracted and dynamically processed complex multi-track interactions from the core CSV dataset.
 *   **Predictive Accuracy:** The Random Forest IoT model achieved a 99% accuracy rate on the simulated test set, properly classifying early-stage mechanical friction.
 
-![Confusion Matrix](confusion_matrix.png)
-![Feature Importance](feature_importance.png)
+![Confusion Matrix](assets/images/confusion_matrix.png)
+![Feature Importance](assets/images/feature_importance.png)
 
 *   **Financial Validation:** When tested with a conceptual crisis query (e.g., "Line A Track Fracture"), the XAI engine successfully prioritized high-weight passenger trains onto fast bypass loops, while rerouting low-priority freight with clear mathematical justification.
 
-![Routing Financial Performance](financial_performance.png)
+![Routing Financial Performance](assets/images/financial_performance.png)
+
+## Repository Structure
+```
+DSBSS/
+├── assets/
+│   ├── images/               # Evaluation plots and architecture graphics
+│   └── styles.css            # Enterprise dark mode CTC design system
+├── core/
+│   ├── data_engine.py        # Section corridor schedule and trajectory engine
+│   ├── ml_diagnostics.py     # Predictive asset diagnostics & telemetry bridge
+│   ├── shadow_block_solver.py # Multi-department OR-Tools CP-SAT optimizer
+│   └── xai_rerouter.py       # 2-Stage CSPF GTKM financial rerouting engine
+├── data/
+│   ├── FINAL_ML_READY_DATA.csv
+│   └── point_machine_telemetry_trend.csv
+├── docs/                     # Design documentation & implementation logs
+├── legacy/                   # Archived early experimental prototypes
+├── models/
+│   └── rf_model.pkl          # Trained Random Forest classifier
+├── scripts/
+│   ├── train_model.py        # Telemetry training pipeline
+│   ├── sensor_simulator.py   # IoT sensor stream generator
+│   └── generate_graph.py     # Plot generation pipeline
+├── api_stage2.py             # FastAPI real-time IoT diagnostic microservice
+├── main_app.py               # Primary Streamlit CTC Operations Dashboard
+├── xai_financial_router.py   # Standalone XAI GTKM router interface
+└── requirements.txt
+```
 
 ## Setup and Installation
 To reproduce this project in your own environment, follow these steps. 
@@ -55,22 +83,23 @@ To reproduce this project in your own environment, follow these steps.
 **1. Install Dependencies:**
 Install the required machine learning and data processing libraries:
 ```bash
-pip install streamlit pandas plotly ortools fastapi uvicorn scikit-learn joblib pydantic
+pip install -r requirements.txt
 ```
-**2. Prepare the Data:**
-Ensure your extracted FINAL_ML_READY_DATA.csv and the trained rf_model.pkl are located in the main directory so the core scripts can locate them dynamically.
+**2. Data & Model Assets:**
+Ensure `FINAL_ML_READY_DATA.csv` is located in `data/` and `rf_model.pkl` is located in `models/` (the core scripts dynamically resolve both `data/`/`models/` and root directory fallbacks).
 
 ## How to Use
-**1. Start the Predictive Watchdog**
-Run the FastAPI inference script to initialize the backend sensor listener. Keep this running in its own terminal.
+**1. Start the Predictive Watchdog (FastAPI Backend)**
+Run the FastAPI inference script to initialize the backend sensor listener:
 ```bash
-uvicorn api_stage2:app --reload
+uvicorn api_stage2:app --port 8000 --reload
 ```
-**2. Launch the Control Center**
-Open a new terminal, activate your environment, and launch the primary Dispatcher Dashboard to view the UI and trigger reroutes.
+**2. Launch the Control Center (Streamlit Master Dashboard)**
+Launch the primary Dispatcher Dashboard to view the section operations, Marey string charts, and trigger XAI rerouting:
 ```bash
-streamlit run app.py
+streamlit run main_app.py
 ```
+*(Optional: Run the standalone GTKM financial router with `streamlit run xai_financial_router.py`)*
 
 ## Acknowledgement
 This project serves as a bridge between rigid, legacy railway infrastructure and modern artificial intelligence, demonstrating the power of mathematical optimization to preserve network flow and safety.
