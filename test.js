@@ -1,118 +1,4 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Track Simulation Pro - Reversible Engine</title>
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@700&display=swap');
-        
-        body, html { margin: 0; padding: 0; width: 100%; height: 100%; background-color: #0f172a; color: #e2e8f0; font-family: 'Inter', sans-serif; overflow: hidden; display: flex; flex-direction: column; user-select: none; }
-        
-        #ui-bar { background-color: #1e293b; padding: 12px 20px; display: flex; gap: 15px; align-items: center; border-bottom: 1px solid #334155; z-index: 10; flex-wrap: wrap; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.3); }
-        .btn-group { display: flex; gap: 4px; background: #0f172a; padding: 5px; border-radius: 8px; border: 1px solid #334155; align-items: center; }
-        
-        button { background-color: transparent; color: #94a3b8; border: none; padding: 8px 14px; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: 600; transition: all 0.2s; display: flex; align-items: center; gap: 6px; }
-        button:hover { background-color: #334155; color: #f8fafc; }
-        button.active { background-color: #3b82f6; color: white; box-shadow: 0 0 10px rgba(59,130,246,0.5); }
-        button.danger { color: #f87171; }
-        button.danger:hover { background-color: #7f1d1d; color: white; }
-        button.danger.active { background-color: #ef4444; color: white; box-shadow: 0 0 10px rgba(239,68,68,0.5); }
-        
-        .separator { width: 1px; height: 28px; background: #334155; margin: 0 5px; }
-        
-        #clock-display { font-family: 'JetBrains Mono', monospace; font-size: 20px; color: #f8fafc; font-weight: 700; background: #0f172a; padding: 6px 12px; border-radius: 8px; border: 1px solid #38bdf8; box-shadow: 0 0 10px rgba(56, 189, 248, 0.2); letter-spacing: 1px; }
-        
-        #canvas-container { flex-grow: 1; position: relative; cursor: grab; background: #0f172a; }
-        #canvas-container.panning { cursor: grabbing !important; }
-        #canvas-container.tool-active { cursor: crosshair; }
-        canvas { display: block; width: 100%; height: 100%; }
-        
-        #timeline-bar { position: absolute; bottom: 0; left: 0; width: 100%; height: 80px; background: rgba(15, 23, 42, 0.9); backdrop-filter: blur(12px); border-top: 1px solid #334155; display: flex; flex-direction: column; justify-content: center; padding: 0 30px; box-sizing: border-box; z-index: 5; }
-        .slider-container { position: relative; width: 100%; height: 30px; display: flex; align-items: center; }
-        #shadow-block-highlight { position: absolute; height: 8px; background: repeating-linear-gradient(45deg, #eab308, #eab308 10px, #ca8a04 10px, #ca8a04 20px); border-radius: 4px; pointer-events: none; z-index: 1; opacity: 0.8; top: 11px; box-shadow: 0 0 10px rgba(234, 179, 8, 0.5); }
-        input[type=range] { -webkit-appearance: none; width: 100%; background: transparent; z-index: 2; position: relative; }
-        input[type=range]:focus { outline: none; }
-        input[type=range]::-webkit-slider-runnable-track { width: 100%; height: 8px; cursor: pointer; background: #334155; border-radius: 4px; border: 1px solid #1e293b; }
-        input[type=range]::-webkit-slider-thumb { border: 2px solid #38bdf8; height: 20px; width: 20px; border-radius: 50%; background: #0f172a; cursor: pointer; -webkit-appearance: none; margin-top: -7px; box-shadow: 0 0 10px rgba(56, 189, 248, 0.8); }
-        .timeline-labels { display: flex; justify-content: space-between; color: #94a3b8; font-size: 12px; font-weight: 600; margin-top: 8px; }
-        
-        #info-panel { position: absolute; top: 25px; left: 25px; background: rgba(15, 23, 42, 0.9); backdrop-filter: blur(12px); border: 1px solid #334155; padding: 20px; border-radius: 12px; min-width: 280px; display: none; box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5); pointer-events: none; border-top: 4px solid #38bdf8; z-index: 4; }
-        #info-panel h3 { margin: 0 0 12px 0; font-size: 18px; color: #f8fafc; display: flex; justify-content: space-between; align-items: center; }
-        #info-panel p { margin: 8px 0; font-size: 14px; color: #cbd5e1; display: flex; justify-content: space-between; }
-        .highlight { color: #38bdf8; font-weight: 600; }
-        .status-badge { padding: 3px 8px; border-radius: 4px; font-size: 12px; font-weight: 700; text-transform: uppercase; }
-        .status-moving { background: rgba(34, 197, 94, 0.2); color: #4ade80; border: 1px solid rgba(34, 197, 94, 0.3); }
-        .status-stopped { background: rgba(239, 68, 68, 0.2); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.3); }
-        
-        .maintenance-warning { position: absolute; top: 25px; right: 25px; background: rgba(234, 179, 8, 0.2); border: 1px solid rgba(234, 179, 8, 0.5); color: #fde047; padding: 12px 20px; border-radius: 8px; font-weight: 600; font-size: 14px; display: none; align-items: center; gap: 10px; box-shadow: 0 0 20px rgba(234, 179, 8, 0.2); pointer-events: none; z-index: 4; }
-        .maintenance-warning.active { display: flex; animation: pulse 2s infinite; }
-        @keyframes pulse { 0% { opacity: 0.8; } 50% { opacity: 1; box-shadow: 0 0 30px rgba(234, 179, 8, 0.4); } 100% { opacity: 0.8; } }
-        
-        #toast { position: absolute; top: 20px; left: 50%; transform: translateX(-50%); background: rgba(59, 130, 246, 0.9); color: white; padding: 10px 20px; border-radius: 30px; font-weight: 600; font-size: 14px; opacity: 0; transition: opacity 0.3s; pointer-events: none; z-index: 100; box-shadow: 0 4px 12px rgba(0,0,0,0.3); }
-        
-        #loading-overlay { position: absolute; top:0; left:0; width:100%; height:100%; background:rgba(15,23,42,0.8); z-index:50; display:flex; justify-content:center; align-items:center; color:white; font-size:20px; font-weight:bold; display:none; }
-    </style>
-</head>
-<body>
 
-    <div id="ui-bar">
-        <div id="clock-display">00:00</div>
-        <div class="separator"></div>
-        <div class="btn-group">
-            <button id="btn-play" class="active">▶ Play</button>
-            <button id="btn-pause">⏸ Pause</button>
-        </div>
-        <div class="btn-group">
-            <button class="speed-btn active" data-speed="1">1x</button>
-            <button class="speed-btn" data-speed="10">10x</button>
-            <button class="speed-btn" data-speed="30">30x</button>
-            <button class="speed-btn" data-speed="100">100x</button>
-        </div>
-        <div class="separator"></div>
-        <div class="btn-group">
-            <button id="tool-select" class="tool-btn active" data-tool="select">👆 Select</button>
-            <button id="tool-train" class="tool-btn" data-tool="train" style="color:#f59e0b;">🚆 Add Train</button>
-            <button id="tool-track" class="tool-btn" data-tool="track">🛤️ Draw Track</button>
-            <button id="tool-delete" class="tool-btn" data-tool="delete">🗑️ Delete</button>
-        </div>
-        <div class="separator"></div>
-        <div class="btn-group">
-            <button id="disrupt-weather" class="danger">🌧️ Weather</button>
-            <button id="disrupt-rail" class="danger tool-btn" data-tool="break_rail">⚠️ Break Rail</button>
-            <button id="btn-clear-faults" style="color: #94a3b8;">✨ Repair</button>
-        </div>
-        <div class="separator"></div>
-        <button id="btn-fullscreen" style="background: #0f172a; border: 1px solid #334155;">⛶ Fullscreen</button>
-    </div>
-
-    <div id="canvas-container">
-        <canvas id="sim-canvas"></canvas>
-        <div id="toast">Message</div>
-        <div id="loading-overlay">Recalculating 24h Timeline...</div>
-        
-        <div id="maintenance-alert" class="maintenance-warning">⚠️ SHADOW-BLOCK ACTIVE (Tracks Locked)</div>
-        
-        <div id="info-panel">
-            <h3 id="info-title"><span>Title</span> <span id="info-badge" class="status-badge status-moving">MOVING</span></h3>
-            <div style="height: 1px; background: #334155; margin: 10px 0;"></div>
-            <p><span>Train Type</span> <span id="info-type" class="highlight">Type</span></p>
-            <p><span>Current Speed</span> <span id="info-speed" style="color: white; font-variant-numeric: tabular-nums;">0 km/h</span></p>
-            <p><span>Next Signal</span> <span id="info-signal" style="font-weight: bold;">--</span></p>
-        </div>
-        
-        <div id="timeline-bar">
-            <div class="slider-container">
-                <div id="shadow-block-highlight"></div>
-                <input type="range" id="time-scrubber" min="0" max="1440" value="0" step="0.5">
-            </div>
-            <div class="timeline-labels">
-                <span>00:00</span><span>06:00</span><span>12:00</span><span>18:00</span><span>24:00</span>
-            </div>
-        </div>
-    </div>
-
-    <script>
         // Inject Python CP-SAT / Timetable Data
         let RAW_DATA = `__INJECTED_DATA__`;
         let SERVER_DATA = { trajectories: [], solver_start: 0, solver_end: 0 };
@@ -428,8 +314,8 @@
             // Load Schedule Trains
             for(let t of SERVER_DATA.trajectories) {
                 let isUp = t.direction.includes('UP');
-                let startEdge = isUp ? `10,45_10,50` : `15,5_15,10`; // L_MAIN for UP, R_MAIN for DOWN
-                if(t.category.includes('Freight')) startEdge = isUp ? `5,45_5,50` : `20,5_20,10`; // Loops for Freight
+                let startEdge = isUp ? `10,55_10,50` : `15,0_15,5`; // L_MAIN for UP, R_MAIN for DOWN
+                if(t.category.includes('Freight')) startEdge = isUp ? `5,55_5,50` : `20,0_20,5`; // Loops for Freight
                 
                 state.trainDefs.push({
                     id: t.train_no, name: t.train_name, type: t.category,
@@ -564,13 +450,6 @@
             ctx.save(); ctx.translate(state.camera.x, state.camera.y); ctx.scale(state.camera.zoom, state.camera.zoom);
             const gs = CONFIG.gridSize;
             
-            // Grid
-            const vSX = Math.floor(-state.camera.x / (gs * state.camera.zoom)), vSY = Math.floor(-state.camera.y / (gs * state.camera.zoom));
-            const vEX = vSX + Math.ceil(canvas.width / (gs * state.camera.zoom)), vEY = vSY + Math.ceil(canvas.height / (gs * state.camera.zoom));
-            ctx.lineWidth = 1; ctx.strokeStyle = 'rgba(255,255,255,0.03)'; ctx.beginPath();
-            for(let x=vSX; x<=vEX; x++) { ctx.moveTo(x*gs, vSY*gs); ctx.lineTo(x*gs, vEY*gs); }
-            for(let y=vSY; y<=vEY; y++) { ctx.moveTo(vSX*gs, y*gs); ctx.lineTo(vEX*gs, y*gs); } ctx.stroke();
-
             // Edges
             for (let [id, edge] of state.edges) {
                 let n1 = state.nodes.get(edge.n1), n2 = state.nodes.get(edge.n2);
@@ -664,7 +543,4 @@
         }
 
         initComplexLayout();
-        requestAnimationFrame(loop);
-    </script>
-</body>
-</html>
+    
