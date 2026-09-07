@@ -13,9 +13,7 @@ __pycache__/
 *$py.class
 
 # Data files
-*.csv
-*.dat
-*.db
+
 
 # Machine Learning models
 *.joblib
